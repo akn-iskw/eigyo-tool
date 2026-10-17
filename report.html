@@ -27,6 +27,7 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 "Hiragino San
 header{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:5}
 header h1{font-size:17px;margin:0;font-weight:600;white-space:nowrap}
 header .sp{flex:1}
+header a.home{display:inline-flex;align-items:center;gap:4px;flex:none;color:var(--accent);font-size:13px;font-weight:600;text-decoration:none;border:1px solid var(--line2);border-radius:999px;padding:5px 10px 5px 8px}
 header a{color:var(--muted);font-size:13px}
 main{max-width:640px;margin:0 auto;padding:14px 12px}
 section.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px}
@@ -99,6 +100,11 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
 .cardrow > button{min-height:36px;padding:4px 12px;font-size:13px}
 .badge.new{background:var(--accent-bg);color:var(--accent)}
 .rmnew{min-height:0;width:30px;height:30px;padding:0;border-radius:50%;flex:none}
+.caselink{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line2);border-radius:10px;margin-bottom:6px;color:inherit;text-decoration:none}
+.caselink .go{margin-left:auto;color:var(--muted)}
+.cst{flex:none;padding:0 8px;border-radius:999px;font-size:12px;font-weight:600;line-height:20px;background:var(--info-bg);color:var(--info)}
+.cst.見学{background:var(--warn-bg);color:var(--warn)}
+.cst.new{background:var(--accent-bg);color:var(--accent)}
 .chk{display:flex;gap:10px;align-items:center;padding:8px 2px;font-size:15px}
 .subform{border:1px dashed var(--line2);border-radius:10px;padding:12px;margin-top:8px}
 .datebox{position:relative;display:flex;align-items:center;gap:10px;min-height:46px;border:1px solid var(--line2);border-radius:10px;padding:0 12px;background:var(--card)}
@@ -126,16 +132,16 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
 .err{color:var(--err)}
 dialog{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);color:var(--text);width:min(460px,92vw);padding:20px}
 dialog::backdrop{background:rgba(0,0,0,.4)}
+.menulink{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:16px;min-height:44px;border-top:1px solid var(--line);padding-top:14px;color:var(--accent);font-size:16px;font-weight:600;text-decoration:none}
 .done{text-align:center;padding:10px 0}
 .done .big{font-size:20px;font-weight:600;margin:6px 0}
 </style>
 </head>
 <body>
 <header>
+  <a href="index.html" class="home" aria-label="メニューに戻る"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/></svg>メニュー</a>
   <h1>訪問報告</h1>
   <span class="sp"></span>
-  <a href="cases.html">成果</a>
-  <a href="import.html">取り込み</a>
   <span id="who" class="muted"></span>
   <button id="btnLogout" class="small hidden">ログアウト</button>
   <button id="btnSettings" class="small">接続設定</button>
@@ -253,7 +259,7 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
       <div class="row" style="flex-wrap:nowrap;margin-top:4px">
         <input type="text" id="compName" placeholder="同行者の名前を入力" list="compList" autocomplete="off">
         <datalist id="compList"></datalist>
-        <button class="small" id="compAdd" style="flex:none;min-height:46px">追加</button>
+        <button class="primary" id="compAdd" style="flex:none;min-height:46px;padding:0 18px">＋ 追加</button>
       </div>
       <p class="err" id="compErr" style="margin:4px 0 0"></p>
       <label class="f">渡した資料</label>
@@ -266,6 +272,28 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
         <label class="chk"><input type="checkbox" id="nmMonthly">毎月新しくなる資料（空室情報など）</label>
         <input type="text" id="nmVer" placeholder="版（任意。例：2026年度版）">
         <div class="row" style="margin-top:8px"><button class="primary small" id="nmSave">追加</button><button class="ghost small" id="nmCancel">やめる</button></div>
+      </div>
+    </section>
+
+    <!-- 5. この営業先からの問合せ -->
+    <section class="card" id="secCase">
+      <h2><span class="num">5</span>この営業先からの問合せ <span class="opt">反響があれば</span></h2>
+      <p class="muted" id="caseHint">先に営業先を選んでください。</p>
+      <div id="caseExisting"></div>
+      <div id="caseNewList"></div>
+      <button class="ghost small hidden" id="btnNewCase">＋ 問合せを登録</button>
+      <div class="subform hidden" id="newCaseForm">
+        <label class="f" style="margin-top:0">呼び名 <span class="err">必須</span></label>
+        <input type="text" id="ncsLabel" placeholder="例：A様（80代女性）" autocomplete="off">
+        <div class="muted" style="color:var(--warn);font-size:12px;margin-top:4px">氏名・病名・住所などは書かないでください。</div>
+        <label class="f">問合せ日</label>
+        <div class="datebox"><span class="dtext" id="ncsDateDow"></span><svg class="cal" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><input type="date" id="ncsDate" aria-label="問合せ日"></div>
+        <label class="f">紹介してくれた担当者</label>
+        <select id="ncsContact"></select>
+        <label class="f">メモ <span class="opt">任意</span></label>
+        <input type="text" id="ncsNote" placeholder="例：11月中の入居を希望、娘さんから連絡あり">
+        <div class="row" style="margin-top:10px"><button class="primary small" id="ncsAdd">この問合せを追加</button><button class="ghost small" id="ncsCancel">やめる</button></div>
+        <p class="err" id="ncsErr" style="margin:6px 0 0"></p>
       </div>
     </section>
 
@@ -343,7 +371,8 @@ function freshState(keepOrg){
     org: keepOrg || null, type: '訪問', met: null, date: todayStr(),
     contacts: [], cardMap: {},
     sel: [], newCs: [], filesBy: {}, cardKey: null,   // 会った担当者（選んだ順）・新しく登録する担当者・担当者ごとの名刺写真
-    origContacts: [],
+    origContacts: [], tmpMap: {},
+    orgCases: [], newCases: [], savedCases: 0,   // この営業先からの問合せ（既存・今回登録する分）
     companions: new Set(), mats: new Set(), saving: false, nextTbd: false,
     editId: null, editReporter: null, origStaff: [], origMats: [],   // 編集中の報告
   };
@@ -362,6 +391,7 @@ const DEMO = {
   contacts: { d1: [{id:'c1', name:'山田 花子', title:'ケアマネジャー', phone:''}] },
   acts: [{id:'a1', organization_id:'d1', type:'訪問', met:true, activity_date:'2026-10-01', summary:'パンフレットを渡し、空室状況を説明。来月また伺う。', next_action:'空室情報を持参', next_date:'2026-11-05', contact_id:'c1', reported_by:'s1', created_at:'2026-10-01T10:00:00'}],
   actStaff: { a1: ['s1', 's2'] }, actMats: { a1: ['m1'] }, actContacts: { a1: ['c1'] },
+  cases: [{id:'k1', prospect_label:'A様（80代女性）', status:'見学', inquiry_date:'2026-10-03', source_organization_id:'d1'}, {id:'k3', prospect_label:'C様（80代男性）', status:'入居', inquiry_date:'2026-09-02', source_organization_id:'d1'}],
   staff: [{id:'s1', name:'あかね'}, {id:'s2', name:'田中'}, {id:'s3', name:'鈴木'}],
   materials: [{id:'m1', name:'パンフレット+料金表', version:null}, {id:'m2', name:'空室情報', version:null, monthly:true}],
 };
@@ -476,6 +506,11 @@ async function loadMaterials(){
 const matLabelAt = (m, d) => m.monthly ? (d ? `${+d.slice(0,4)}年${+d.slice(5,7)}月版` : '今月版') : (m.version || '');
 const matLabel = m => matLabelAt(m, S.date);
 const api = {
+  async orgCases(orgId){
+    if (demo) return DEMO.cases.filter(c => c.source_organization_id === orgId);
+    const { data, error } = await sb.from('cases').select('id,prospect_label,status,inquiry_date').eq('source_organization_id', orgId).order('inquiry_date', { ascending: false }).limit(30);
+    return error ? [] : (data || []);
+  },
   async stats(orgId){
     if (demo) return DEMO.stats[orgId] || {visit_count:0, meeting_count:0, last_visit_date:null};
     const { data } = await sb.from('organization_stats').select('organization_id,visit_count,meeting_count,last_visit_date,referral_count,move_in_count').eq('organization_id', orgId);
@@ -540,7 +575,9 @@ $('orgResults').onclick = e => { const b = e.target.closest('.res'); if (b) sele
 
 async function selectOrg(id){
   const o = orgs.find(x => x.id === id); if (!o) return;
-  S.org = o; S.contacts = []; S.cardMap = {}; S.sel = []; S.newCs = []; S.filesBy = {};
+  S.org = o; S.contacts = []; S.cardMap = {}; S.sel = []; S.newCs = []; S.filesBy = {}; S.orgCases = [];
+  renderCases();
+  api.orgCases(id).then(list => { if (S.org === o) { S.orgCases = list; renderCases(); } });
   $('orgSearch').classList.add('hidden'); $('orgPicked').classList.remove('hidden');
   $('orgPicked').innerHTML = pickedHtml(o, null, null);
   renderContacts(true);
@@ -570,7 +607,7 @@ function pickedHtml(o, st, hist){
       `<div data-act="${esc(h.id)}"><b>${fmtDate(h.activity_date)}</b>　${esc(h.type)}${h.type==='訪問' ? (h.met ? '（面会）' : '（不在）') : ''}${(h.contactIds || []).map(contactName).filter(Boolean).length ? '・' + esc((h.contactIds || []).map(contactName).filter(Boolean).join('、')) : ''}${h.reported_by ? '　<span class="muted">' + esc(staffName(h.reported_by)) + '</span>' : ''}${h.summary ? '<br>' + esc(h.summary.length > 60 ? h.summary.slice(0,60) + '…' : h.summary) : ''}</div>`).join('')}</div>` : ''}
   </div>`;
 }
-$('orgPicked').onclick = e => { const h = e.target.closest('[data-act]'); if (h) { openAct(h.dataset.act, 'new'); return; } if (e.target.id === 'btnChangeOrg') { S.org = null; S.contacts = []; S.sel = []; S.newCs = []; S.filesBy = {}; renderAll(); $('orgQ').focus(); } };
+$('orgPicked').onclick = e => { const h = e.target.closest('[data-act]'); if (h) { openAct(h.dataset.act, 'new'); return; } if (e.target.id === 'btnChangeOrg') { S.org = null; S.contacts = []; S.sel = []; S.newCs = []; S.filesBy = {}; S.orgCases = []; S.newCases = []; renderAll(); $('orgQ').focus(); } };
 
 // 一覧にない営業先
 $('btnNewOrg').onclick = () => { $('newOrgForm').classList.remove('hidden'); $('btnNewOrg').classList.add('hidden'); $('noName').value = $('orgQ').value; $('noKind').value = $('orgKind').value || '居宅介護支援'; $('noErr').textContent = ''; };
@@ -751,9 +788,78 @@ $('nmSave').onclick = async () => {
   renderMats();
 };
 
+// ---------------- 5. この営業先からの問合せ ----------------
+function renderCases(){
+  const none = !S.org;
+  $('caseHint').classList.toggle('hidden', !none);
+  $('btnNewCase').classList.toggle('hidden', none || !$('newCaseForm').classList.contains('hidden'));
+  if (none) { $('caseExisting').innerHTML = ''; $('caseNewList').innerHTML = ''; $('newCaseForm').classList.add('hidden'); return; }
+  const open = S.orgCases.filter(c => c.status === '問合せ' || c.status === '見学');
+  const done = S.orgCases.length - open.length;
+  $('caseExisting').innerHTML = (open.length ? '<div class="muted" style="margin-bottom:6px">進行中の問合せ（タップで見学・入居を記録）</div>' + open.map(c =>
+      `<a class="caselink" href="cases.html#${esc(c.id)}"><span class="cst ${esc(c.status)}">${esc(c.status)}</span><b>${esc(c.prospect_label)}</b><span class="muted">${esc(fmtDate(c.inquiry_date))}</span><span class="go">›</span></a>`).join('') : '') +
+    (done ? `<div class="muted" style="margin:2px 0 8px">ほかに終わった案件が ${done} 件あります（入居・失注）。</div>` : '');
+  const cname = key => !key ? '' : (S.contacts.find(c => c.id === key)?.name || S.newCs.find(n => n.tmp === key)?.name || '');
+  $('caseNewList').innerHTML = S.newCases.map(c => `<div class="choice on"><div class="t"><b><span class="cst new">今回登録</span> ${esc(c.label)}</b>
+      <div class="muted">問合せ ${esc(fmtDate(c.date))}${cname(c.contactKey) ? '・紹介 ' + esc(cname(c.contactKey)) : ''}${c.note ? '・' + esc(c.note) : ''}</div></div>
+      <button class="rmnew" data-rmcase="${esc(c.tmp)}" aria-label="${esc(c.label)}を外す">×</button></div>`).join('');
+}
+function fillCaseContacts(){
+  // 今回会った人（選んだ順）を先に、その営業先のほかの担当者を後に並べる
+  const picked = [...S.sel.map(id => S.contacts.find(c => c.id === id)).filter(Boolean).map(c => [c.id, c.name]), ...S.newCs.map(n => [n.tmp, n.name])];
+  const others = S.contacts.filter(c => !S.sel.includes(c.id)).map(c => [c.id, c.name]);
+  $('ncsContact').innerHTML = '<option value="">記録しない</option>' +
+    (picked.length ? `<optgroup label="今回会った担当者">${picked.map(([v, n]) => `<option value="${esc(v)}">${esc(n)}</option>`).join('')}</optgroup>` : '') +
+    (others.length ? `<optgroup label="ほかの担当者">${others.map(([v, n]) => `<option value="${esc(v)}">${esc(n)}</option>`).join('')}</optgroup>` : '');
+  $('ncsContact').value = picked.length ? picked[0][0] : '';
+}
+$('btnNewCase').onclick = () => {
+  fillCaseContacts();
+  $('ncsDate').value = S.date || todayStr(); showDow('ncsDate');
+  $('newCaseForm').classList.remove('hidden'); $('btnNewCase').classList.add('hidden'); $('ncsErr').textContent = ''; $('ncsLabel').focus();
+};
+$('ncsCancel').onclick = () => { ['ncsLabel', 'ncsNote'].forEach(id => $(id).value = ''); $('newCaseForm').classList.add('hidden'); renderCases(); };
+['input', 'change'].forEach(t => $('ncsDate').addEventListener(t, () => showDow('ncsDate')));
+$('ncsDate').addEventListener('click', e => { try { e.target.showPicker(); } catch {} });
+function addNewCase(){
+  const label = $('ncsLabel').value.replace(/\s+/g, ' ').trim(), date = $('ncsDate').value;
+  if (!label) { $('ncsErr').textContent = '呼び名を入力してください。'; $('ncsLabel').focus(); return false; }
+  if (!date) { $('ncsErr').textContent = '問合せ日を入力してください。'; return false; }
+  S.newCases.push({ tmp: 'case' + Date.now() + Math.random().toString(36).slice(2, 6), label, date, contactKey: $('ncsContact').value, note: $('ncsNote').value.trim() });
+  ['ncsLabel', 'ncsNote'].forEach(id => $(id).value = '');
+  $('newCaseForm').classList.add('hidden'); $('ncsErr').textContent = '';
+  renderCases();
+  return true;
+}
+$('ncsAdd').onclick = addNewCase;
+$('caseNewList').onclick = e => { const b = e.target.closest('[data-rmcase]'); if (b) { S.newCases = S.newCases.filter(c => c.tmp !== b.dataset.rmcase); renderCases(); } };
+// 報告を保存したあとに、問合せを案件として登録する（登録できた分から外すので、保存し直しても二重にならない）
+async function saveCases(warnings){
+  S.savedCases = 0;
+  for (const c of [...S.newCases]) {
+    let cid = c.contactKey || null;
+    if (cid && S.tmpMap[cid]) cid = S.tmpMap[cid];
+    if (cid && cid.startsWith('new')) cid = null;          // 外した新規担当者
+    const row = { prospect_label: c.label, status: '問合せ', inquiry_date: c.date,
+      inquiry_route: S.org.kind === '紹介会社' ? '紹介会社' : '営業先からの紹介',
+      source_organization_id: S.org.id, source_contact_id: cid, assigned_staff_id: meId, note: c.note || null };
+    if (demo) { DEMO.cases.push({ id: 'k' + Date.now(), ...row }); }
+    else {
+      const { error } = await sb.from('cases').insert(row);
+      if (error) {
+        warnings.push(/inquiry_route/.test(error.message) ? '問合せを登録するには、管理者に「成果の記録用のSQL」の実行を依頼してください。' : `問合せ「${c.label}」を登録できませんでした：${error.message}`);
+        continue;
+      }
+    }
+    S.savedCases++;
+    S.newCases = S.newCases.filter(x => x !== c);
+  }
+}
+
 // ---------------- 全体の描画 ----------------
 function renderAll(){
   const picked = !!S.org;
+  renderCases();
   $('orgSearch').classList.toggle('hidden', picked);
   $('orgPicked').classList.toggle('hidden', !picked);
   if (!picked) renderOrgResults();
@@ -783,6 +889,9 @@ $('btnSave').onclick = async () => {
   if (S.saving) return;
   // 担当者の入力欄に名前が入ったままなら、追加してから保存する
   if (!$('newContactForm').classList.contains('hidden') && nfkc($('ncName').value)) addNewContact();
+  if (!$('newCaseForm').classList.contains('hidden') && $('ncsLabel').value.trim()) { if (!addNewCase()) return; }
+  // 同行者の名前が入ったまま（「追加」の押し忘れ）なら、追加してから保存する
+  if (nfkc($('compName').value)) { await addCompanion(); $('compName').value = ''; $('compErr').textContent = ''; }
   const v = validate();
   if (v) { $('saveMsg').innerHTML = `<span class="err">${esc(v[0])}</span>`; $(v[1]).scrollIntoView({behavior:'smooth', block:'start'}); return; }
   S.saving = true; $('btnSave').disabled = true;
@@ -791,12 +900,13 @@ $('btnSave').onclick = async () => {
   try {
     if (demo) {
       await wait(300);
-      S.newCs.forEach(n => { const c = { id: 'c' + Date.now() + n.tmp, name: n.name, title: n.title }; (DEMO.contacts[S.org.id] ||= []).push(c); S.contacts.push(c); S.sel.push(c.id); });
+      S.newCs.forEach(n => { const c = { id: 'c' + Date.now() + n.tmp, name: n.name, title: n.title }; (DEMO.contacts[S.org.id] ||= []).push(c); S.contacts.push(c); S.sel.push(c.id); S.tmpMap[n.tmp] = c.id; });
       S.newCs = [];
       const row = { organization_id: S.org.id, contact_id: S.sel[0] || null, type: S.type, met: S.type === '訪問' ? S.met : null, activity_date: S.date,
         summary: $('summary').value.trim() || null, next_action: $('nextAction').value.trim() || null, next_date: $('nextDate').value || null };
       if (S.editId) { Object.assign(DEMO.acts.find(a => a.id === S.editId), row); DEMO.actStaff[S.editId] = [S.editReporter, ...S.companions]; DEMO.actMats[S.editId] = [...S.mats]; DEMO.actContacts[S.editId] = [...S.sel]; }
       else { const id = 'a' + Date.now(); DEMO.acts.push({ id, ...row, reported_by: meId, created_at: new Date().toISOString() }); DEMO.actStaff[id] = [meId, ...S.companions]; DEMO.actMats[id] = [...S.mats]; DEMO.actContacts[id] = [...S.sel]; S.lastId = id; }
+      await saveCases(warnings);
       return showDone({ visit_count: '—', meeting_count: '—' }, warnings, true);
     }
 
@@ -807,7 +917,7 @@ $('btnSave').onclick = async () => {
       const { data, error } = await sb.from('contacts').insert(row).select('id,name,name_kana,title,phone').single();
       if (error) throw new Error(`担当者「${n.name}」を登録できませんでした：` + error.message);
       await sb.from('contact_affiliations').insert({ contact_id: data.id, organization_id: S.org.id, start_date: S.date });
-      S.contacts.push(data); S.sel.push(data.id);
+      S.contacts.push(data); S.sel.push(data.id); S.tmpMap[n.tmp] = data.id;
       if (S.filesBy[n.tmp]) { S.filesBy[data.id] = S.filesBy[n.tmp]; delete S.filesBy[n.tmp]; }
       S.newCs = S.newCs.filter(x => x !== n);
     }
@@ -856,6 +966,7 @@ $('btnSave').onclick = async () => {
       if (error) warnings.push('渡した資料を記録できませんでした：' + error.message);
     }
     S.lastId = a.id;
+    await saveCases(warnings);
     const st = await api.stats(S.org.id);
     statsMap.set(S.org.id, st);
     showDone(st, warnings, false);
@@ -867,7 +978,7 @@ $('btnSave').onclick = async () => {
 };
 
 function showDone(st, warnings, isDemo){
-  ['secOrg','secType','secContact','secBody'].forEach(id => $(id).classList.add('hidden'));
+  ['secOrg','secType','secContact','secBody','secCase'].forEach(id => $(id).classList.add('hidden'));
   $('saveBar').classList.add('hidden');
   const d = $('doneCard'); d.classList.remove('hidden');
   d.innerHTML = `<div class="done">
@@ -875,12 +986,15 @@ function showDone(st, warnings, isDemo){
       ${isDemo ? '<div class="banner demo">デモモードのため、実際には保存していません。</div>' : ''}
       <div>${esc(S.org.name)}</div>
       <div class="stats" style="justify-content:center"><span>訪問 <b>${esc(st.visit_count)}</b> 回</span><span>面会 <b>${esc(st.meeting_count)}</b> 回</span></div>
+      ${S.savedCases ? `<div class="banner ok" style="margin-top:12px">問合せを ${S.savedCases} 件登録しました。<a href="cases.html">成果の記録で見る ›</a></div>` : ''}
       ${warnings.length ? `<div class="banner err" style="text-align:left;margin-top:12px">${warnings.map(esc).join('<br>')}</div>` : ''}
     </div>
     ${S.editId ? `<button class="primary" id="btnViewSaved" style="width:100%;margin-top:8px">保存した報告を見る</button>
-    <button id="btnBackPast" style="width:100%;margin-top:8px">過去の報告に戻る</button>` : `<button class="primary" id="btnAgainSame" style="width:100%;margin-top:8px">同じ営業先で続けて報告</button>
+    <button id="btnBackPast" style="width:100%;margin-top:8px">過去の報告に戻る</button>
+    <a href="index.html" class="menulink"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/></svg>メニューに戻る</a>` : `<button class="primary" id="btnAgainSame" style="width:100%;margin-top:8px">同じ営業先で続けて報告</button>
     <button id="btnAgainNew" style="width:100%;margin-top:8px">別の営業先を報告</button>
-    <button class="ghost" id="btnViewSaved" style="width:100%;margin-top:8px">保存した報告を見る・追記する</button>`}`;
+    <button class="ghost" id="btnViewSaved" style="width:100%;margin-top:8px">保存した報告を見る・追記する</button>
+    <a href="index.html" class="menulink"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/></svg>メニューに戻る</a>`}`;
   window.scrollTo({ top: 0 });
 }
 $('doneCard').onclick = e => {
@@ -890,7 +1004,7 @@ $('doneCard').onclick = e => {
   const same = e.target.id === 'btnAgainSame' ? S.org : null;
   S = freshState();
   ['summary','nextAction','nextDate','orgQ'].forEach(id => $(id).value = '');
-  ['secOrg','secType','secContact','secBody'].forEach(id => $(id).classList.remove('hidden'));
+  ['secOrg','secType','secContact','secBody','secCase'].forEach(id => $(id).classList.remove('hidden'));
   $('doneCard').classList.add('hidden'); $('saveBar').classList.remove('hidden');
   renderStaff(); renderMats(); renderAll();
   if (same) selectOrg(same.id);
@@ -939,7 +1053,7 @@ const contactNamesOf = a => (a.contactIds || (a.contact_id ? [a.contact_id] : []
 // ================= 過去の報告・詳細・編集 =================
 let view = 'new', actFrom = 'past', curAct = null;
 const past = { mine: true, rows: [], done: false, contactNames: new Map(), loading: false };
-const FORM_SECS = ['secOrg', 'secType', 'secContact', 'secBody'];
+const FORM_SECS = ['secOrg', 'secType', 'secContact', 'secBody', 'secCase'];
 function setView(v){
   view = v;
   [...$('vtabs').children].forEach(b => b.classList.toggle('on', b.dataset.v === (v === 'act' ? actFrom : v)));
@@ -1139,6 +1253,7 @@ async function saveEdit(contactId, contactIds, warnings){
   await sync('activity_staff', 'staff_id', S.origStaff, [...new Set([S.editReporter, ...S.companions])].filter(Boolean), '同行者');
   await sync('activity_materials', 'material_id', S.origMats, [...S.mats], '渡した資料');
   await linkContacts(id, S.origContacts, contactIds, warnings);
+  await saveCases(warnings);
   const st = await api.stats(S.org.id);
   statsMap.set(S.org.id, st);
   showDone(st, warnings, false);

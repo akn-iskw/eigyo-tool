@@ -27,6 +27,7 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 "Hiragino San
 header{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:5}
 header h1{font-size:17px;margin:0;font-weight:600;white-space:nowrap}
 header .sp{flex:1}
+header a.home{display:inline-flex;align-items:center;gap:4px;flex:none;color:var(--accent);font-size:13px;font-weight:600;text-decoration:none;border:1px solid var(--line2);border-radius:999px;padding:5px 10px 5px 8px}
 header a{color:var(--muted);font-size:13px;white-space:nowrap}
 main{max-width:640px;margin:0 auto;padding:14px 12px}
 section.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px}
@@ -119,9 +120,9 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
 </head>
 <body>
 <header>
+  <a href="index.html" class="home" aria-label="メニューに戻る"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h5v-6h4v6h5V9.5"/></svg>メニュー</a>
   <h1>成果の記録</h1>
   <span class="sp"></span>
-  <a href="report.html">訪問報告</a>
   <span id="who" class="muted"></span>
   <button id="btnLogout" class="small hidden">ログアウト</button>
   <button id="btnSettings" class="small">接続設定</button>
