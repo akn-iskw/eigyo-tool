@@ -68,6 +68,22 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
 .stats b{font-size:18px}
 .hist{margin-top:10px;border-top:1px dashed var(--line2);padding-top:8px}
 .hist div{font-size:13px;padding:4px 0;border-bottom:1px solid var(--line)}
+.hist div[data-act]{cursor:pointer}
+.hist div[data-act]:hover{color:var(--accent)}
+.vtabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+.vtabs button{font-size:15px}
+.vtabs button.on{background:var(--text);border-color:var(--text);color:var(--card);font-weight:600}
+.pitem{display:block;width:100%;text-align:left;padding:10px 12px;border-radius:10px;margin-top:8px}
+.pitem .t{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.pitem b{font-weight:600}
+.pitem .s{font-size:13px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.tag{display:inline-block;padding:0 8px;border-radius:999px;font-size:12px;font-weight:600;background:var(--info-bg);color:var(--info)}
+.tag.no{background:var(--line);color:var(--muted)}
+.dl{display:grid;grid-template-columns:7.5em 1fr;gap:6px 10px;font-size:15px;margin-top:12px}
+.dl dt{color:var(--muted);font-size:13px;padding-top:2px}
+.dl dd{margin:0;word-break:break-word}
+.banner.edit{background:var(--info-bg);color:var(--info);display:flex;align-items:center;gap:8px}
+.banner.edit span{flex:1}
 .hist div:last-child{border-bottom:0}
 .choice{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line2);border-radius:10px;margin-bottom:6px;cursor:pointer}
 .choice.on{border-color:var(--accent);background:var(--accent-bg)}
@@ -78,6 +94,11 @@ label.f{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
 .prev{position:relative}
 .prev img{width:96px;height:62px}
 .prev button{position:absolute;top:-8px;right:-8px;min-height:0;width:24px;height:24px;padding:0;border-radius:50%;font-size:13px;line-height:1}
+.choice .t label{cursor:pointer;display:block}
+.cardrow{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cardrow > button{min-height:36px;padding:4px 12px;font-size:13px}
+.badge.new{background:var(--accent-bg);color:var(--accent)}
+.rmnew{min-height:0;width:30px;height:30px;padding:0;border-radius:50%;flex:none}
 .chk{display:flex;gap:10px;align-items:center;padding:8px 2px;font-size:15px}
 .subform{border:1px dashed var(--line2);border-radius:10px;padding:12px;margin-top:8px}
 .datebox{position:relative;display:flex;align-items:center;gap:10px;min-height:46px;border:1px solid var(--line2);border-radius:10px;padding:0 12px;background:var(--card)}
@@ -134,6 +155,19 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
   </section>
 
   <div id="app" class="hidden">
+    <div class="vtabs" id="vtabs"><button data-v="new" class="on">新しい報告</button><button data-v="past">過去の報告</button></div>
+    <div class="banner edit hidden" id="editBanner"><span id="editText"></span><button class="small" id="editCancel">編集をやめる</button></div>
+
+    <!-- 過去の報告 -->
+    <section class="card hidden" id="vPast">
+      <div class="seg seg2" id="pastWho"><button data-v="mine" class="on">自分の報告</button><button data-v="all">全員の報告</button></div>
+      <input type="search" id="pastQ" placeholder="営業先の名前で絞り込み" autocomplete="off" style="margin-top:8px">
+      <div id="pastList"></div>
+      <button class="ghost hidden" id="pastMore" style="width:100%;margin-top:10px">もっと見る</button>
+    </section>
+    <!-- 報告の詳細 -->
+    <section class="card hidden" id="vAct"></section>
+
     <!-- 1. 営業先 -->
     <section class="card" id="secOrg">
       <h2><span class="num">1</span>営業先</h2>
@@ -183,11 +217,12 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
 
     <!-- 3. 担当者・名刺 -->
     <section class="card" id="secContact">
-      <h2><span class="num">3</span>会った担当者 <span class="opt">任意</span></h2>
+      <h2><span class="num">3</span>会った担当者 <span class="opt">任意・何人でも</span></h2>
       <p class="muted" id="contactHint">先に営業先を選んでください。</p>
       <div id="contactList"></div>
+      <button class="ghost small hidden" id="btnNewContact" style="margin-top:4px">＋ 新しい担当者を登録</button>
       <div class="subform hidden" id="newContactForm">
-        <label class="f">氏名 <span class="err">必須</span></label>
+        <label class="f" style="margin-top:0">氏名 <span class="err">必須</span></label>
         <input type="text" id="ncName" placeholder="例：山田 花子">
         <label class="f">ふりがな</label>
         <input type="text" id="ncKana">
@@ -196,12 +231,10 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
         <datalist id="titleList"><option>ケアマネジャー</option><option>主任ケアマネジャー</option><option>MSW（医療ソーシャルワーカー）</option><option>相談員</option><option>退院調整看護師</option><option>管理者</option><option>事務</option></datalist>
         <label class="f">電話番号</label>
         <input type="tel" id="ncPhone">
+        <div class="row" style="margin-top:10px"><button class="primary small" id="ncAdd">この担当者を追加</button><button class="ghost small" id="ncCancel">やめる</button></div>
+        <p class="err" id="ncErr" style="margin:6px 0 0"></p>
       </div>
-      <div id="cardBox" class="hidden" style="margin-top:10px">
-        <button class="ghost" id="btnCard" style="width:100%">名刺を撮影・写真を追加</button>
-        <input type="file" id="cardInput" accept="image/*" capture="environment" multiple class="hidden">
-        <div class="thumbs" id="cardPrev"></div>
-      </div>
+      <input type="file" id="cardInput" accept="image/*" capture="environment" multiple class="hidden">
     </section>
 
     <!-- 4. 報告内容 -->
@@ -308,8 +341,11 @@ let S = freshState();
 function freshState(keepOrg){
   return {
     org: keepOrg || null, type: '訪問', met: null, date: todayStr(),
-    contacts: [], cardMap: {}, contactSel: '',   // '' = 記録しない / id / '__new'
-    files: [], companions: new Set(), mats: new Set(), saving: false, nextTbd: false,
+    contacts: [], cardMap: {},
+    sel: [], newCs: [], filesBy: {}, cardKey: null,   // 会った担当者（選んだ順）・新しく登録する担当者・担当者ごとの名刺写真
+    origContacts: [],
+    companions: new Set(), mats: new Set(), saving: false, nextTbd: false,
+    editId: null, editReporter: null, origStaff: [], origMats: [],   // 編集中の報告
   };
 }
 
@@ -324,7 +360,8 @@ const DEMO = {
   ],
   stats: { d1: {visit_count:3, meeting_count:2, last_visit_date: '2026-10-01'} },
   contacts: { d1: [{id:'c1', name:'山田 花子', title:'ケアマネジャー', phone:''}] },
-  history: { d1: [{type:'訪問', met:true, activity_date:'2026-10-01', summary:'パンフレットを渡し、空室状況を説明。来月また伺う。', contact_id:'c1', reported_by:'s1'}] },
+  acts: [{id:'a1', organization_id:'d1', type:'訪問', met:true, activity_date:'2026-10-01', summary:'パンフレットを渡し、空室状況を説明。来月また伺う。', next_action:'空室情報を持参', next_date:'2026-11-05', contact_id:'c1', reported_by:'s1', created_at:'2026-10-01T10:00:00'}],
+  actStaff: { a1: ['s1', 's2'] }, actMats: { a1: ['m1'] }, actContacts: { a1: ['c1'] },
   staff: [{id:'s1', name:'あかね'}, {id:'s2', name:'田中'}, {id:'s3', name:'鈴木'}],
   materials: [{id:'m1', name:'パンフレット+料金表', version:null}, {id:'m2', name:'空室情報', version:null, monthly:true}],
 };
@@ -436,7 +473,8 @@ async function loadMaterials(){
   }
 }
 // 毎月の資料は、報告の日付の月を版として表示する
-const matLabel = m => m.monthly ? (S.date ? `${+S.date.slice(0,4)}年${+S.date.slice(5,7)}月版` : '今月版') : (m.version || '');
+const matLabelAt = (m, d) => m.monthly ? (d ? `${+d.slice(0,4)}年${+d.slice(5,7)}月版` : '今月版') : (m.version || '');
+const matLabel = m => matLabelAt(m, S.date);
 const api = {
   async stats(orgId){
     if (demo) return DEMO.stats[orgId] || {visit_count:0, meeting_count:0, last_visit_date:null};
@@ -459,7 +497,7 @@ const api = {
     return map;
   },
   async history(orgId){
-    if (demo) return DEMO.history[orgId] || [];
+    if (demo) return DEMO.acts.filter(a => a.organization_id === orgId).sort((a, b) => b.activity_date.localeCompare(a.activity_date)).slice(0, 5);
     const { data } = await sb.from('activities').select('id,type,met,activity_date,summary,contact_id,reported_by').eq('organization_id', orgId).order('activity_date', {ascending:false}).limit(5);
     return data || [];
   },
@@ -502,12 +540,13 @@ $('orgResults').onclick = e => { const b = e.target.closest('.res'); if (b) sele
 
 async function selectOrg(id){
   const o = orgs.find(x => x.id === id); if (!o) return;
-  S.org = o; S.contacts = []; S.cardMap = {}; S.contactSel = ''; S.files = [];
+  S.org = o; S.contacts = []; S.cardMap = {}; S.sel = []; S.newCs = []; S.filesBy = {};
   $('orgSearch').classList.add('hidden'); $('orgPicked').classList.remove('hidden');
   $('orgPicked').innerHTML = pickedHtml(o, null, null);
   renderContacts(true);
   try {
     const [st, hist, contacts] = await Promise.all([api.stats(id), api.history(id), api.contacts(id)]);
+    await loadActContacts(hist);
     if (S.org !== o) return;
     S.contacts = contacts;
     $('orgPicked').innerHTML = pickedHtml(o, st, hist);
@@ -527,11 +566,11 @@ function pickedHtml(o, st, hist){
     <h3>${esc(o.name)}</h3>
     <div class="muted">${esc(o.address || areaOf(o))}${tel ? '　' + tel : ''}</div>
     ${st ? `<div class="stats"><span>訪問 <b>${+st.visit_count||0}</b> 回</span><span>面会 <b>${+st.meeting_count||0}</b> 回</span><span>最終訪問 <b>${st.last_visit_date ? fmtDate(st.last_visit_date) : '—'}</b></span>${+st.referral_count ? `<span>紹介 <b>${+st.referral_count}</b> 件（入居 ${+st.move_in_count || 0}）</span>` : ''}</div>` : '<div class="muted" style="margin-top:8px">読み込み中…</div>'}
-    ${hist && hist.length ? `<div class="hist"><div class="muted" style="border:0">最近の記録</div>${hist.map(h =>
-      `<div><b>${fmtDate(h.activity_date)}</b>　${esc(h.type)}${h.type==='訪問' ? (h.met ? '（面会）' : '（不在）') : ''}${h.contact_id && contactName(h.contact_id) ? '・' + esc(contactName(h.contact_id)) : ''}${h.reported_by ? '　<span class="muted">' + esc(staffName(h.reported_by)) + '</span>' : ''}${h.summary ? '<br>' + esc(h.summary.length > 60 ? h.summary.slice(0,60) + '…' : h.summary) : ''}</div>`).join('')}</div>` : ''}
+    ${hist && hist.length ? `<div class="hist"><div class="muted" style="border:0">最近の記録（タップで全文・編集）</div>${hist.map(h =>
+      `<div data-act="${esc(h.id)}"><b>${fmtDate(h.activity_date)}</b>　${esc(h.type)}${h.type==='訪問' ? (h.met ? '（面会）' : '（不在）') : ''}${(h.contactIds || []).map(contactName).filter(Boolean).length ? '・' + esc((h.contactIds || []).map(contactName).filter(Boolean).join('、')) : ''}${h.reported_by ? '　<span class="muted">' + esc(staffName(h.reported_by)) + '</span>' : ''}${h.summary ? '<br>' + esc(h.summary.length > 60 ? h.summary.slice(0,60) + '…' : h.summary) : ''}</div>`).join('')}</div>` : ''}
   </div>`;
 }
-$('orgPicked').onclick = e => { if (e.target.id === 'btnChangeOrg') { S.org = null; S.contacts = []; S.contactSel = ''; S.files = []; renderAll(); $('orgQ').focus(); } };
+$('orgPicked').onclick = e => { const h = e.target.closest('[data-act]'); if (h) { openAct(h.dataset.act, 'new'); return; } if (e.target.id === 'btnChangeOrg') { S.org = null; S.contacts = []; S.sel = []; S.newCs = []; S.filesBy = {}; renderAll(); $('orgQ').focus(); } };
 
 // 一覧にない営業先
 $('btnNewOrg').onclick = () => { $('newOrgForm').classList.remove('hidden'); $('btnNewOrg').classList.add('hidden'); $('noName').value = $('orgQ').value; $('noKind').value = $('orgKind').value || '居宅介護支援'; $('noErr').textContent = ''; };
@@ -574,28 +613,58 @@ $('nextClear').onclick = e => { e.preventDefault(); e.stopPropagation(); S.nextT
 
 // ---------------- 3. 担当者・名刺 ----------------
 function renderContacts(loading){
-  if (!S.org) { $('contactHint').classList.remove('hidden'); $('contactHint').textContent = '先に営業先を選んでください。'; $('contactList').innerHTML = ''; $('newContactForm').classList.add('hidden'); $('cardBox').classList.add('hidden'); return; }
-  $('contactHint').classList.toggle('hidden', !loading);
-  $('contactHint').textContent = '読み込み中…';
+  const none = !S.org;
+  $('btnNewContact').classList.toggle('hidden', !!(none || loading) || !$('newContactForm').classList.contains('hidden'));
+  if (none) { $('contactHint').classList.remove('hidden'); $('contactHint').textContent = '先に営業先を選んでください。'; $('contactList').innerHTML = ''; $('newContactForm').classList.add('hidden'); return; }
+  $('contactHint').classList.toggle('hidden', !loading && (S.contacts.length + S.newCs.length) > 0);
+  $('contactHint').textContent = loading ? '読み込み中…' : 'この営業先の担当者はまだ登録されていません。「＋ 新しい担当者を登録」から追加できます。';
   if (loading) { $('contactList').innerHTML = ''; return; }
-  const opt = (v, inner) => `<label class="choice ${S.contactSel === v ? 'on' : ''}"><input type="radio" name="ct" value="${esc(v)}" ${S.contactSel === v ? 'checked' : ''}><div class="t">${inner}</div></label>`;
+  const cardRow = key => {
+    const fs = S.filesBy[key] || [];
+    return `<div class="cardrow"><button data-card="${esc(key)}">${fs.length ? `名刺を追加（${fs.length}枚）` : '名刺を撮影'}</button>${fs.map((f, i) => `<div class="prev"><img src="${URL.createObjectURL(f)}" alt=""><button data-rmfile="${esc(key)}" data-i="${i}" aria-label="削除">×</button></div>`).join('')}</div>`;
+  };
   $('contactList').innerHTML =
-    S.contacts.map(c => opt(c.id, `<b>${esc(c.name)}</b>${c.title ? `　<span class="muted">${esc(c.title)}</span>` : ''}` +
-      ((S.cardMap[c.id] || []).length ? `<div class="thumbs">${S.cardMap[c.id].filter(Boolean).map(u => `<img src="${esc(u)}" alt="名刺">`).join('')}</div>` : ''))).join('') +
-    opt('__new', '<b>＋ 新しい担当者を登録</b>') +
-    opt('', `<span class="muted">担当者を記録しない${S.type === '訪問' && S.met === false ? '（不在）' : ''}</span>`);
-  $('newContactForm').classList.toggle('hidden', S.contactSel !== '__new');
-  $('cardBox').classList.toggle('hidden', !S.contactSel);
-  renderCardPrev();
+    S.contacts.map((c, i) => {
+      const on = S.sel.includes(c.id);
+      const thumbs = (S.cardMap[c.id] || []).filter(Boolean);
+      return `<div class="choice ${on ? 'on' : ''}"><input type="checkbox" id="ck${i}" data-cid="${esc(c.id)}" ${on ? 'checked' : ''}>
+        <div class="t"><label for="ck${i}"><b>${esc(c.name)}</b>${c.title ? `　<span class="muted">${esc(c.title)}</span>` : ''}</label>
+        ${thumbs.length ? `<div class="thumbs">${thumbs.map(u => `<img src="${esc(u)}" alt="名刺">`).join('')}</div>` : ''}
+        ${on ? cardRow(c.id) : ''}</div></div>`;
+    }).join('') +
+    S.newCs.map(n => `<div class="choice on"><div class="t"><b><span class="badge new">新規</span>${esc(n.name)}</b>${n.title ? `　<span class="muted">${esc(n.title)}</span>` : ''}${cardRow(n.tmp)}</div>
+      <button class="rmnew" data-rmnew="${esc(n.tmp)}" aria-label="${esc(n.name)}を外す">×</button></div>`).join('');
 }
-$('contactList').onchange = e => { if (e.target.name === 'ct') { S.contactSel = e.target.value; renderContacts(); if (S.contactSel === '__new') $('ncName').focus(); } };
-$('btnCard').onclick = () => $('cardInput').click();
-$('cardInput').onchange = e => { S.files.push(...[...e.target.files]); e.target.value = ''; renderCardPrev(); };
-function renderCardPrev(){
-  $('cardPrev').innerHTML = S.files.map((f, i) => `<div class="prev"><img src="${URL.createObjectURL(f)}" alt=""><button data-i="${i}" aria-label="削除">×</button></div>`).join('');
-  $('btnCard').textContent = S.files.length ? `名刺の写真を追加（${S.files.length}枚選択中）` : '名刺を撮影・写真を追加';
+$('contactList').onchange = e => {
+  const id = e.target.dataset.cid; if (!id) return;
+  if (e.target.checked) { if (!S.sel.includes(id)) S.sel.push(id); }
+  else { S.sel = S.sel.filter(x => x !== id); delete S.filesBy[id]; }
+  renderContacts();
+};
+$('contactList').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.card) { S.cardKey = b.dataset.card; $('cardInput').click(); }
+  else if (b.dataset.rmfile) { S.filesBy[b.dataset.rmfile].splice(+b.dataset.i, 1); renderContacts(); }
+  else if (b.dataset.rmnew) { S.newCs = S.newCs.filter(n => n.tmp !== b.dataset.rmnew); delete S.filesBy[b.dataset.rmnew]; renderContacts(); }
+};
+$('cardInput').onchange = e => {
+  if (S.cardKey) (S.filesBy[S.cardKey] ||= []).push(...[...e.target.files]);
+  e.target.value = ''; renderContacts();
+};
+$('btnNewContact').onclick = () => { $('newContactForm').classList.remove('hidden'); $('btnNewContact').classList.add('hidden'); $('ncErr').textContent = ''; $('ncName').focus(); };
+$('ncCancel').onclick = () => { $('newContactForm').classList.add('hidden'); $('btnNewContact').classList.remove('hidden'); ['ncName','ncKana','ncTitle','ncPhone'].forEach(id => $(id).value = ''); };
+function addNewContact(){
+  const name = nfkc($('ncName').value);
+  if (!name) { $('ncErr').textContent = '氏名を入力してください。'; $('ncName').focus(); return false; }
+  const exist = S.contacts.find(c => searchKey(c.name) === searchKey(name));
+  if (exist) { if (!S.sel.includes(exist.id)) S.sel.push(exist.id); }
+  else S.newCs.push({ tmp: 'new' + Date.now() + Math.random().toString(36).slice(2, 6), name, kana: nfkc($('ncKana').value), title: nfkc($('ncTitle').value), phone: nfkc($('ncPhone').value).replace(/\s/g, '') });
+  ['ncName','ncKana','ncTitle','ncPhone'].forEach(id => $(id).value = '');
+  $('newContactForm').classList.add('hidden'); $('btnNewContact').classList.remove('hidden'); $('ncErr').textContent = '';
+  renderContacts();
+  return true;
 }
-$('cardPrev').onclick = e => { const b = e.target.closest('button'); if (b) { S.files.splice(+b.dataset.i, 1); renderCardPrev(); } };
+$('ncAdd').onclick = addNewContact;
 
 // 写真を縮小（長辺1600px・JPEG）して容量を抑える
 async function shrink(file){
@@ -695,6 +764,9 @@ function renderAll(){
   renderContacts();
   $('saveMsg').textContent = '';
   $('btnSave').disabled = !canWrite() || S.saving;
+  $('btnSave').textContent = S.editId ? '変更を保存' : '報告を保存';
+  $('editBanner').classList.toggle('hidden', !S.editId);
+  if (S.editId) $('editText').textContent = `${fmtDate(S.date)}の報告を編集中`;
 }
 const canWrite = () => demo || staffRole === 'admin' || staffRole === 'sales';
 
@@ -703,49 +775,64 @@ function validate(){
   if (!S.org) return ['営業先を選んでください。', 'secOrg'];
   if (S.type === '訪問' && S.met === null) return ['担当者に会えたかどうかを選んでください。', 'secType'];
   if (!S.date) return ['日付を入力してください。', 'secType'];
-  if (S.contactSel === '__new' && !nfkc($('ncName').value)) return ['新しい担当者の氏名を入力してください。', 'secContact'];
   const nd = $('nextDate').value;
   if (nd && nd < S.date) return ['次回予定日が、報告の日付より前になっています。', 'secBody'];
   return null;
 }
 $('btnSave').onclick = async () => {
   if (S.saving) return;
+  // 担当者の入力欄に名前が入ったままなら、追加してから保存する
+  if (!$('newContactForm').classList.contains('hidden') && nfkc($('ncName').value)) addNewContact();
   const v = validate();
   if (v) { $('saveMsg').innerHTML = `<span class="err">${esc(v[0])}</span>`; $(v[1]).scrollIntoView({behavior:'smooth', block:'start'}); return; }
   S.saving = true; $('btnSave').disabled = true;
   const msg = t => $('saveMsg').textContent = t;
   const warnings = [];
   try {
-    if (demo) { await wait(400); return showDone({ visit_count: '—', meeting_count: '—' }, warnings, true); }
-
-    // 新しい担当者
-    if (S.contactSel === '__new') {
-      msg('担当者を登録中…');
-      const row = { organization_id: S.org.id, name: nfkc($('ncName').value), name_kana: nfkc($('ncKana').value) || null, title: nfkc($('ncTitle').value) || null, phone: nfkc($('ncPhone').value).replace(/\s/g,'') || null };
-      const { data, error } = await sb.from('contacts').insert(row).select('id,name,name_kana,title,phone').single();
-      if (error) throw new Error('担当者を登録できませんでした：' + error.message);
-      await sb.from('contact_affiliations').insert({ contact_id: data.id, organization_id: S.org.id, start_date: S.date });
-      // 途中で失敗して保存し直しても、担当者が二重に登録されないようにする
-      S.contacts.push(data); S.contactSel = data.id;
-      ['ncName','ncKana','ncTitle','ncPhone'].forEach(id => $(id).value = '');
+    if (demo) {
+      await wait(300);
+      S.newCs.forEach(n => { const c = { id: 'c' + Date.now() + n.tmp, name: n.name, title: n.title }; (DEMO.contacts[S.org.id] ||= []).push(c); S.contacts.push(c); S.sel.push(c.id); });
+      S.newCs = [];
+      const row = { organization_id: S.org.id, contact_id: S.sel[0] || null, type: S.type, met: S.type === '訪問' ? S.met : null, activity_date: S.date,
+        summary: $('summary').value.trim() || null, next_action: $('nextAction').value.trim() || null, next_date: $('nextDate').value || null };
+      if (S.editId) { Object.assign(DEMO.acts.find(a => a.id === S.editId), row); DEMO.actStaff[S.editId] = [S.editReporter, ...S.companions]; DEMO.actMats[S.editId] = [...S.mats]; DEMO.actContacts[S.editId] = [...S.sel]; }
+      else { const id = 'a' + Date.now(); DEMO.acts.push({ id, ...row, reported_by: meId, created_at: new Date().toISOString() }); DEMO.actStaff[id] = [meId, ...S.companions]; DEMO.actMats[id] = [...S.mats]; DEMO.actContacts[id] = [...S.sel]; S.lastId = id; }
+      return showDone({ visit_count: '—', meeting_count: '—' }, warnings, true);
     }
-    const contactId = S.contactSel || null;
 
-    // 名刺
-    if (contactId && S.files.length) {
-      const files = [...S.files];
+    // 新しい担当者（登録できた人から順に「既存の担当者」に移すので、保存し直しても二重登録されない）
+    for (const n of [...S.newCs]) {
+      msg(`担当者を登録中…（${n.name}）`);
+      const row = { organization_id: S.org.id, name: n.name, name_kana: n.kana || null, title: n.title || null, phone: n.phone || null };
+      const { data, error } = await sb.from('contacts').insert(row).select('id,name,name_kana,title,phone').single();
+      if (error) throw new Error(`担当者「${n.name}」を登録できませんでした：` + error.message);
+      await sb.from('contact_affiliations').insert({ contact_id: data.id, organization_id: S.org.id, start_date: S.date });
+      S.contacts.push(data); S.sel.push(data.id);
+      if (S.filesBy[n.tmp]) { S.filesBy[data.id] = S.filesBy[n.tmp]; delete S.filesBy[n.tmp]; }
+      S.newCs = S.newCs.filter(x => x !== n);
+    }
+    const contactIds = [...S.sel];
+    const contactId = contactIds[0] || null;   // 1人目を代表として報告にも記録
+
+    // 名刺（担当者ごと）
+    for (const cid of contactIds) {
+      const files = [...(S.filesBy[cid] || [])];
+      const cname = S.contacts.find(c => c.id === cid)?.name || '';
       for (let i = 0; i < files.length; i++) {
-        msg(`名刺をアップロード中… ${i + 1}/${files.length}`);
+        msg(`名刺をアップロード中…（${cname} ${i + 1}/${files.length}）`);
         const blob = await shrink(files[i]);
         const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
-        const path = `${contactId}/${Date.now()}-${i}.${ext}`;
+        const path = `${cid}/${Date.now()}-${i}.${ext}`;
         const up = await sb.storage.from('business-cards').upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: false });
-        if (up.error) { warnings.push(`名刺${i + 1}枚目をアップロードできませんでした：${up.error.message}`); continue; }
-        const { error } = await sb.from('business_cards').insert({ contact_id: contactId, storage_path: path, uploaded_by: meId });
-        if (error) warnings.push(`名刺${i + 1}枚目を記録できませんでした：${error.message}`);
-        S.files.splice(S.files.indexOf(files[i]), 1);
+        if (up.error) { warnings.push(`${cname}さんの名刺${i + 1}枚目をアップロードできませんでした：${up.error.message}`); continue; }
+        const { error } = await sb.from('business_cards').insert({ contact_id: cid, storage_path: path, uploaded_by: meId });
+        if (error) warnings.push(`${cname}さんの名刺${i + 1}枚目を記録できませんでした：${error.message}`);
+        S.filesBy[cid].splice(S.filesBy[cid].indexOf(files[i]), 1);
       }
     }
+
+    // 編集の場合は、上書きして同行者・資料の差分だけを付け替える
+    if (S.editId) return await saveEdit(contactId, contactIds, warnings);
 
     // 接触記録
     msg('報告を保存中…');
@@ -757,6 +844,7 @@ $('btnSave').onclick = async () => {
     };
     const { data: a, error: ae } = await sb.from('activities').insert(act).select('id').single();
     if (ae) throw new Error('報告を保存できませんでした：' + ae.message);
+    await linkContacts(a.id, [], contactIds, warnings);
 
     const staffIds = [...new Set([meId, ...S.companions])].filter(Boolean);
     if (staffIds.length) {
@@ -767,6 +855,7 @@ $('btnSave').onclick = async () => {
       const { error } = await sb.from('activity_materials').insert([...S.mats].map(id => ({ activity_id: a.id, material_id: id })));
       if (error) warnings.push('渡した資料を記録できませんでした：' + error.message);
     }
+    S.lastId = a.id;
     const st = await api.stats(S.org.id);
     statsMap.set(S.org.id, st);
     showDone(st, warnings, false);
@@ -782,17 +871,21 @@ function showDone(st, warnings, isDemo){
   $('saveBar').classList.add('hidden');
   const d = $('doneCard'); d.classList.remove('hidden');
   d.innerHTML = `<div class="done">
-      <div class="big">報告を保存しました</div>
+      <div class="big">${S.editId ? '変更を保存しました' : '報告を保存しました'}</div>
       ${isDemo ? '<div class="banner demo">デモモードのため、実際には保存していません。</div>' : ''}
       <div>${esc(S.org.name)}</div>
       <div class="stats" style="justify-content:center"><span>訪問 <b>${esc(st.visit_count)}</b> 回</span><span>面会 <b>${esc(st.meeting_count)}</b> 回</span></div>
       ${warnings.length ? `<div class="banner err" style="text-align:left;margin-top:12px">${warnings.map(esc).join('<br>')}</div>` : ''}
     </div>
-    <button class="primary" id="btnAgainSame" style="width:100%;margin-top:8px">同じ営業先で続けて報告</button>
-    <button id="btnAgainNew" style="width:100%;margin-top:8px">別の営業先を報告</button>`;
+    ${S.editId ? `<button class="primary" id="btnViewSaved" style="width:100%;margin-top:8px">保存した報告を見る</button>
+    <button id="btnBackPast" style="width:100%;margin-top:8px">過去の報告に戻る</button>` : `<button class="primary" id="btnAgainSame" style="width:100%;margin-top:8px">同じ営業先で続けて報告</button>
+    <button id="btnAgainNew" style="width:100%;margin-top:8px">別の営業先を報告</button>
+    <button class="ghost" id="btnViewSaved" style="width:100%;margin-top:8px">保存した報告を見る・追記する</button>`}`;
   window.scrollTo({ top: 0 });
 }
 $('doneCard').onclick = e => {
+  if (e.target.id === 'btnViewSaved') { const id = S.editId || S.lastId; resetForm(); openAct(id, 'past'); return; }
+  if (e.target.id === 'btnBackPast') { resetForm(); setView('past'); return; }
   if (e.target.id !== 'btnAgainSame' && e.target.id !== 'btnAgainNew') return;
   const same = e.target.id === 'btnAgainSame' ? S.org : null;
   S = freshState();
@@ -803,6 +896,253 @@ $('doneCard').onclick = e => {
   if (same) selectOrg(same.id);
   window.scrollTo({ top: 0 });
 };
+
+// ================= 報告と担当者（複数）のつながり =================
+let hasActContacts = true;   // activity_contacts の表があるか（SQL未実行なら false）
+const ACT_CONTACTS_SQL_MSG = '2人目以降の担当者を保存するには、管理者に「担当者を複数記録するSQL」の実行を依頼してください。';
+async function loadActContacts(acts){
+  if (!acts.length) return;
+  let map = {};
+  if (demo) map = Object.fromEntries(acts.map(a => [a.id, DEMO.actContacts[a.id] || []]));
+  else if (hasActContacts) {
+    const { data, error } = await sb.from('activity_contacts').select('activity_id,contact_id').in('activity_id', acts.map(a => a.id));
+    if (error) { if (/activity_contacts/.test(error.message)) hasActContacts = false; }
+    else (data || []).forEach(r => (map[r.activity_id] ||= []).push(r.contact_id));
+  }
+  // 表に記録がない報告（以前の報告など）は、報告に記録された1人を使う
+  acts.forEach(a => {
+    const list = map[a.id] || [];
+    if (a.contact_id && !list.includes(a.contact_id)) list.unshift(a.contact_id);
+    else if (a.contact_id) { list.splice(list.indexOf(a.contact_id), 1); list.unshift(a.contact_id); }
+    a.contactIds = list;
+  });
+}
+async function linkContacts(actId, before, after, warnings){
+  if (demo) return;
+  const add = after.filter(x => !before.includes(x)), del = before.filter(x => !after.includes(x));
+  if (!hasActContacts) { if (after.length > 1) warnings.push(ACT_CONTACTS_SQL_MSG); return; }
+  if (del.length) {
+    const r = await sb.from('activity_contacts').delete().eq('activity_id', actId).in('contact_id', del).select('contact_id');
+    if (r.error && /activity_contacts/.test(r.error.message)) { hasActContacts = false; if (after.length > 1) warnings.push(ACT_CONTACTS_SQL_MSG); return; }
+    if (r.error || (r.data || []).length !== del.length) warnings.push('外した担当者を記録から消せませんでした。');
+  }
+  if (add.length) {
+    const r = await sb.from('activity_contacts').insert(add.map(c => ({ activity_id: actId, contact_id: c })));
+    if (r.error) {
+      if (/activity_contacts/.test(r.error.message)) { hasActContacts = false; if (after.length > 1) warnings.push(ACT_CONTACTS_SQL_MSG); }
+      else warnings.push('担当者を記録できませんでした：' + r.error.message);
+    }
+  }
+}
+const contactNamesOf = a => (a.contactIds || (a.contact_id ? [a.contact_id] : [])).map(id => past.contactNames.get(id)).filter(Boolean);
+
+// ================= 過去の報告・詳細・編集 =================
+let view = 'new', actFrom = 'past', curAct = null;
+const past = { mine: true, rows: [], done: false, contactNames: new Map(), loading: false };
+const FORM_SECS = ['secOrg', 'secType', 'secContact', 'secBody'];
+function setView(v){
+  view = v;
+  [...$('vtabs').children].forEach(b => b.classList.toggle('on', b.dataset.v === (v === 'act' ? actFrom : v)));
+  const showForm = v === 'new' && $('doneCard').classList.contains('hidden');
+  FORM_SECS.forEach(id => $(id).classList.toggle('hidden', !showForm));
+  $('saveBar').classList.toggle('hidden', !showForm);
+  $('vPast').classList.toggle('hidden', v !== 'past');
+  $('vAct').classList.toggle('hidden', v !== 'act');
+  if (v !== 'new') { $('doneCard').classList.add('hidden'); $('editBanner').classList.add('hidden'); }
+  else $('editBanner').classList.toggle('hidden', !S.editId);
+  if (v === 'past') loadPast(true);
+  window.scrollTo({ top: 0 });
+}
+function resetForm(keepOrg){
+  S = freshState();
+  ['summary', 'nextAction', 'nextDate', 'orgQ'].forEach(id => $(id).value = '');
+  $('doneCard').classList.add('hidden');
+  renderStaff(); renderMats(); renderAll();
+  if (keepOrg) selectOrg(keepOrg);
+}
+$('vtabs').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.v === 'new' && !$('doneCard').classList.contains('hidden')) resetForm();
+  setView(b.dataset.v);
+};
+$('editCancel').onclick = () => { const id = S.editId; resetForm(); openAct(id, actFrom); };
+const canEdit = a => demo || staffRole === 'admin' || (staffRole === 'sales' && a.reported_by === meId);
+const staffNameOf = id => staffList.find(s => s.id === id)?.name || '';
+const typeText = a => a.type + (a.type === '訪問' ? (a.met ? '（面会）' : '（不在）') : '');
+
+// ---- 一覧 ----
+const ACT_COLS = 'id,organization_id,contact_id,type,met,activity_date,summary,next_action,next_date,reported_by,created_at';
+async function loadPast(reset){
+  if (past.loading) return;
+  if (reset) { past.rows = []; past.done = false; $('pastList').innerHTML = '<p class="muted" style="margin-top:12px">読み込み中…</p>'; }
+  past.loading = true;
+  try {
+    const key = searchKey($('pastQ').value);
+    const orgIds = key ? orgs.filter(o => o._key.includes(key)).slice(0, 150).map(o => o.id) : null;
+    let rows;
+    if (orgIds && !orgIds.length) rows = [];
+    else if (demo) {
+      rows = DEMO.acts.filter(a => (!past.mine || a.reported_by === meId) && (!orgIds || orgIds.includes(a.organization_id)))
+        .sort((a, b) => b.activity_date.localeCompare(a.activity_date) || String(b.created_at).localeCompare(String(a.created_at)))
+        .slice(past.rows.length, past.rows.length + 30);
+    } else {
+      let q = sb.from('activities').select(ACT_COLS);
+      if (past.mine) q = q.eq('reported_by', meId);
+      if (orgIds) q = q.in('organization_id', orgIds);
+      const { data, error } = await q.order('activity_date', { ascending: false }).order('created_at', { ascending: false }).range(past.rows.length, past.rows.length + 29);
+      if (error) throw error;
+      rows = data;
+    }
+    past.rows.push(...rows); past.done = rows.length < 30;
+    await loadActContacts(rows);
+    await loadContactNames(rows.flatMap(r => r.contactIds || []));
+    renderPast();
+  } catch (e) {
+    $('pastList').innerHTML = `<p class="err">読み込めませんでした：${esc(e.message)}</p>`;
+  } finally { past.loading = false; }
+}
+async function loadContactNames(ids){
+  ids = [...new Set(ids.filter(Boolean))].filter(id => !past.contactNames.has(id));
+  if (!ids.length) return;
+  if (demo) { Object.values(DEMO.contacts).flat().forEach(c => past.contactNames.set(c.id, c.name)); return; }
+  const { data } = await sb.from('contacts').select('id,name').in('id', ids);
+  (data || []).forEach(c => past.contactNames.set(c.id, c.name));
+}
+function renderPast(){
+  const orgName = id => orgs.find(o => o.id === id)?.name || '（削除された営業先）';
+  $('pastList').innerHTML = past.rows.length ? past.rows.map(a => `<button class="pitem" data-id="${esc(a.id)}">
+      <div class="t"><b>${esc(fmtDate(a.activity_date))}</b><span class="tag ${a.type === '訪問' && !a.met ? 'no' : ''}">${esc(typeText(a))}</span></div>
+      <div><b>${esc(orgName(a.organization_id))}</b>${contactNamesOf(a).length ? `<span class="muted">・${esc(contactNamesOf(a).join('、'))}</span>` : ''}${!past.mine ? `<span class="muted">　報告 ${esc(staffNameOf(a.reported_by))}</span>` : ''}</div>
+      ${a.summary ? `<div class="s">${esc(a.summary)}</div>` : ''}
+    </button>`).join('')
+    : `<p class="muted" style="margin-top:12px">${$('pastQ').value ? '該当する報告はありません。' : 'まだ報告がありません。'}</p>`;
+  $('pastMore').classList.toggle('hidden', past.done);
+}
+$('pastWho').onclick = e => { const b = e.target.closest('button'); if (!b) return; past.mine = b.dataset.v === 'mine'; [...$('pastWho').children].forEach(x => x.classList.toggle('on', x === b)); loadPast(true); };
+let pastTimer = null;
+$('pastQ').addEventListener('input', () => { clearTimeout(pastTimer); pastTimer = setTimeout(() => loadPast(true), 300); });
+$('pastMore').onclick = () => loadPast(false);
+$('pastList').onclick = e => { const b = e.target.closest('.pitem'); if (b) openAct(b.dataset.id, 'past'); };
+
+// ---- 詳細 ----
+async function getAct(id){
+  if (demo) {
+    const a = DEMO.acts.find(x => x.id === id);
+    return a ? { a: { ...a }, staffIds: DEMO.actStaff[id] || [], matIds: DEMO.actMats[id] || [] } : null;
+  }
+  const [r1, r2, r3] = await Promise.all([
+    sb.from('activities').select(ACT_COLS).eq('id', id),
+    sb.from('activity_staff').select('staff_id').eq('activity_id', id),
+    sb.from('activity_materials').select('material_id').eq('activity_id', id),
+  ]);
+  if (r1.error) throw r1.error;
+  if (!r1.data || !r1.data.length) return null;
+  return { a: r1.data[0], staffIds: (r2.data || []).map(x => x.staff_id), matIds: (r3.data || []).map(x => x.material_id) };
+}
+async function openAct(id, from){
+  actFrom = from || 'past';
+  setView('act');
+  $('vAct').innerHTML = '<p class="muted">読み込み中…</p>';
+  try {
+    const r = await getAct(id);
+    if (!r) { $('vAct').innerHTML = '<p class="muted">この報告は見つかりませんでした（削除された可能性があります）。</p><button id="actBack">戻る</button>'; return; }
+    curAct = r;
+    await loadActContacts([r.a]);
+    await loadContactNames(r.a.contactIds);
+    renderAct();
+  } catch (e) { $('vAct').innerHTML = `<p class="err">読み込めませんでした：${esc(e.message)}</p><button id="actBack">戻る</button>`; }
+}
+function renderAct(){
+  const { a, staffIds, matIds } = curAct;
+  const o = orgs.find(x => x.id === a.organization_id);
+  const comps = staffIds.filter(id => id !== a.reported_by).map(staffNameOf).filter(Boolean);
+  const mats = matIds.map(id => materials.find(m => m.id === id)).filter(Boolean).map(m => m.name + (matLabelAt(m, a.activity_date) ? `（${matLabelAt(m, a.activity_date)}）` : ''));
+  $('vAct').innerHTML = `
+    <div class="row" style="justify-content:space-between">
+      <button class="small ghost" id="actBack">‹ ${actFrom === 'past' ? '一覧' : '戻る'}</button>
+      ${canEdit(a) ? '<button class="small primary" id="actEdit">編集・追記する</button>' : '<span class="muted">編集は報告者と管理者のみ</span>'}
+    </div>
+    <div class="row" style="margin-top:12px;gap:8px"><b style="font-size:18px">${esc(fmtDate(a.activity_date))}</b><span class="tag ${a.type === '訪問' && !a.met ? 'no' : ''}">${esc(typeText(a))}</span></div>
+    <div style="font-size:17px;font-weight:600;margin-top:4px">${esc(o ? o.name : '（削除された営業先）')}</div>
+    ${o ? `<div class="muted">${esc(o.kind)}　${esc(areaOf(o))}</div>` : ''}
+    <dl class="dl">
+      <dt>会った担当者</dt><dd>${esc(contactNamesOf(a).join('、') || '—')}</dd>
+      <dt>報告者</dt><dd>${esc(staffNameOf(a.reported_by) || '—')}</dd>
+      <dt>同行者</dt><dd>${esc(comps.join('、') || '—')}</dd>
+      <dt>渡した資料</dt><dd>${esc(mats.join('、') || '—')}</dd>
+      <dt>報告内容</dt><dd style="white-space:pre-wrap">${esc(a.summary || '—')}</dd>
+      <dt>次のアクション</dt><dd>${esc(a.next_action || '—')}</dd>
+      <dt>次回予定日</dt><dd>${a.next_date ? esc(fmtDate(a.next_date)) : '未定・なし'}</dd>
+    </dl>
+    <div style="display:grid;gap:8px;margin-top:16px">
+      <button id="actNewSame">この営業先で新しく報告</button>
+      ${staffRole === 'admin' && !demo ? '<button class="small" id="actDelete" style="color:var(--err);border-color:var(--err);background:transparent">この報告を削除</button>' : ''}
+    </div>`;
+}
+$('vAct').onclick = async e => {
+  const id = e.target.id;
+  if (id === 'actBack') { setView(actFrom); return; }
+  if (!curAct) return;
+  if (id === 'actEdit') return startEdit(curAct);
+  if (id === 'actNewSame') { resetForm(curAct.a.organization_id); setView('new'); return; }
+  if (id === 'actDelete') {
+    if (!confirm('この報告を削除します。訪問回数などの集計からも外れます。元に戻せません。よろしいですか？')) return;
+    const { data, error } = await sb.from('activities').delete().eq('id', curAct.a.id).select('id');
+    if (error || !data || !data.length) { alert('削除できませんでした。' + (error ? error.message : '削除は管理者のみできます。')); return; }
+    statsMap.set(curAct.a.organization_id, await api.stats(curAct.a.organization_id));
+    curAct = null; setView('past');
+  }
+};
+
+// ---- 編集 ----
+async function startEdit({ a, staffIds, matIds }){
+  resetForm();
+  S.editId = a.id; S.editReporter = a.reported_by;
+  S.origStaff = [...staffIds]; S.origMats = [...matIds];
+  S.type = a.type; S.met = a.type === '訪問' ? a.met : null; S.date = a.activity_date;
+  S.companions = new Set(staffIds.filter(id => id !== a.reported_by));
+  S.mats = new Set(matIds);
+  $('summary').value = a.summary || ''; $('nextAction').value = a.next_action || ''; $('nextDate').value = a.next_date || '';
+  setView('new');
+  renderStaff(); renderMats(); renderAll();
+  await selectOrg(a.organization_id);
+  if (S.editId !== a.id) return;
+  const ids = a.contactIds || (a.contact_id ? [a.contact_id] : []);
+  ids.forEach(id => { if (!S.contacts.some(c => c.id === id)) S.contacts.push({ id, name: past.contactNames.get(id) || '（担当者）' }); });
+  S.sel = [...ids]; S.origContacts = [...ids];
+  renderContacts();
+}
+async function saveEdit(contactId, contactIds, warnings){
+  const id = S.editId;
+  $('saveMsg').textContent = '変更を保存中…';
+  const row = {
+    organization_id: S.org.id, contact_id: contactId, type: S.type,
+    met: S.type === '訪問' ? S.met : null, activity_date: S.date,
+    summary: $('summary').value.trim() || null, next_action: $('nextAction').value.trim() || null,
+    next_date: $('nextDate').value || null,
+  };
+  const { data, error } = await sb.from('activities').update(row).eq('id', id).select('id');
+  if (error) throw new Error('変更を保存できませんでした：' + error.message);
+  if (!data || !data.length) throw new Error('この報告は編集できません（報告した本人と管理者のみ編集できます）。');
+  // 同行者・資料は、外したもの・足したものだけを付け替える
+  const sync = async (table, col, before, after, label) => {
+    const add = after.filter(x => !before.includes(x)), del = before.filter(x => !after.includes(x));
+    if (del.length) {
+      const r = await sb.from(table).delete().eq('activity_id', id).in(col, del).select(col);
+      if (r.error || (r.data || []).length !== del.length) warnings.push(`${label}を外せませんでした。管理者に「報告の編集用のSQL」の実行を依頼してください。`);
+    }
+    if (add.length) {
+      const r = await sb.from(table).insert(add.map(x => ({ activity_id: id, [col]: x })));
+      if (r.error) warnings.push(`${label}を追加できませんでした：${r.error.message}`);
+    }
+  };
+  await sync('activity_staff', 'staff_id', S.origStaff, [...new Set([S.editReporter, ...S.companions])].filter(Boolean), '同行者');
+  await sync('activity_materials', 'material_id', S.origMats, [...S.mats], '渡した資料');
+  await linkContacts(id, S.origContacts, contactIds, warnings);
+  const st = await api.stats(S.org.id);
+  statsMap.set(S.org.id, st);
+  showDone(st, warnings, false);
+}
 
 initConn();
 </script>
