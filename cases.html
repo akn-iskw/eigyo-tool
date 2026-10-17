@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>成果の記録</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+:root{
+  --bg:#f6f5f1; --card:#ffffff; --line:#e3e1da; --line2:#cfccc3;
+  --text:#24231f; --muted:#6d6b64; --accent:#2f6f5e; --accent-bg:#e4f1ec;
+  --warn:#8a5a0b; --warn-bg:#fbf0d9; --err:#9b2c2c; --err-bg:#fbe9e9;
+  --info:#1f5a8f; --info-bg:#e6f0fa; --radius:12px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#1b1b19; --card:#252522; --line:#3a3935; --line2:#4a4944;
+    --text:#ecebe6; --muted:#a3a19a; --accent:#7fd0b5; --accent-bg:#1f3a32;
+    --warn:#f2c46b; --warn-bg:#3d3018; --err:#f19a9a; --err-bg:#3f2222;
+    --info:#9cc6ef; --info-bg:#1d3045;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 "Hiragino Sans","Noto Sans JP","Yu Gothic UI",sans-serif;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:5}
+header h1{font-size:17px;margin:0;font-weight:600;white-space:nowrap}
+header .sp{flex:1}
+header a{color:var(--muted);font-size:13px;white-space:nowrap}
+main{max-width:640px;margin:0 auto;padding:14px 12px}
+section.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+section.card h2{font-size:15px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+.muted{color:var(--muted);font-size:13px}
+button,select,input,textarea{font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line2);border-radius:10px;padding:10px 12px}
+textarea{width:100%;min-height:90px;resize:vertical}
+input[type=text],input[type=search],input[type=email],input[type=password],select{width:100%;min-height:46px}
+button{cursor:pointer;min-height:44px}
+button.primary{background:var(--accent);color:var(--card);border-color:var(--accent);font-weight:600}
+button.ghost{background:transparent}
+button.small{min-height:34px;padding:4px 10px;font-size:13px}
+button.danger{color:var(--err);border-color:var(--err);background:transparent}
+button:disabled{opacity:.45;cursor:not-allowed}
+label.f{display:block;font-size:13px;color:var(--muted);margin:14px 0 4px}
+.err{color:var(--err)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hidden{display:none!important}
+.banner{padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:12px}
+.banner.demo{background:var(--warn-bg);color:var(--warn)}
+.banner.ok{background:var(--accent-bg);color:var(--accent)}
+.banner.err{background:var(--err-bg);color:var(--err)}
+
+/* 今月の件数 */
+.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi div{background:var(--bg);border-radius:10px;padding:10px;text-align:center}
+.kpi b{display:block;font-size:24px;line-height:1.2}
+.kpi span{font-size:12px;color:var(--muted)}
+
+/* 一覧 */
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.tabs button{padding:6px 2px;font-size:14px}
+.tabs button.on{background:var(--text);border-color:var(--text);color:var(--card);font-weight:600}
+.case{display:block;width:100%;text-align:left;padding:12px;border-radius:10px;margin-top:8px}
+.case .top{display:flex;align-items:center;gap:8px}
+.case b{font-weight:600;font-size:16px}
+.case .csub{font-size:13px;color:var(--muted);margin-top:2px}
+.st{display:inline-block;flex:none;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600;line-height:22px}
+.st-問合せ{background:var(--info-bg);color:var(--info)}
+.st-見学{background:var(--warn-bg);color:var(--warn)}
+.st-入居{background:var(--accent-bg);color:var(--accent)}
+.st-失注{background:var(--line);color:var(--muted)}
+.case .age{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+
+/* 入力 */
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.seg button{padding:8px 4px;font-size:14px;line-height:1.3}
+.seg button.on{background:var(--accent);border-color:var(--accent);color:var(--card);font-weight:600}
+.results{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.res{text-align:left;display:block;width:100%;padding:10px 12px;border-radius:10px}
+.res b{display:block;font-weight:600;line-height:1.4}
+.res span{font-size:12px;color:var(--muted)}
+.picked{display:flex;align-items:center;gap:8px;border:1px solid var(--accent);background:var(--accent-bg);border-radius:10px;padding:10px 12px}
+.picked .t{flex:1;min-width:0}
+.picked b{display:block;font-weight:600;line-height:1.4}
+.picked span{font-size:12px;color:var(--muted)}
+.hint{font-size:12px;color:var(--warn);margin-top:4px}
+.datebox{position:relative;display:flex;align-items:center;gap:10px;min-height:46px;border:1px solid var(--line2);border-radius:10px;padding:0 12px;background:var(--card)}
+.datebox:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg)}
+.datebox input{position:absolute;inset:0;width:100%;height:100%;min-height:0;opacity:0;border:0;padding:0;margin:0;cursor:pointer;z-index:1}
+.datebox .dtext{flex:1;font-size:16px}
+.datebox .dtext .ph{color:var(--muted)}
+.datebox .dtext .sat{color:var(--info);font-weight:600}
+.datebox .dtext .sun{color:var(--err);font-weight:600}
+.datebox small{font-size:13px;color:var(--muted);margin-left:8px}
+.datebox .cal{flex:none;color:var(--muted)}
+
+/* 詳細 */
+.steps{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin:14px 0 4px}
+.steps div{border-radius:10px;padding:8px 6px;text-align:center;background:var(--bg);color:var(--muted);font-size:13px;line-height:1.4}
+.steps div b{display:block;font-size:14px}
+.steps div.done{background:var(--accent-bg);color:var(--accent)}
+.steps div.lost{background:var(--line);color:var(--muted)}
+.dl{display:grid;grid-template-columns:5.5em 1fr;gap:4px 10px;font-size:14px;margin-top:10px}
+.dl dt{color:var(--muted)}
+.dl dd{margin:0;word-break:break-word}
+.acts{display:grid;gap:8px;margin-top:14px}
+.acts.two{grid-template-columns:1fr 1fr}
+.sub{border:1px dashed var(--line2);border-radius:10px;padding:12px;margin-top:10px}
+.hist div{font-size:13px;padding:4px 0;border-bottom:1px solid var(--line)}
+.hist div:last-child{border-bottom:0}
+
+.savebar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));z-index:6}
+.savebar .in{max-width:640px;margin:0 auto}
+.savebar button{width:100%;font-size:17px;min-height:52px}
+.savebar .msg{font-size:13px;margin-bottom:6px}
+dialog{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);color:var(--text);width:min(460px,92vw);padding:20px}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+</style>
+</head>
+<body>
+<header>
+  <h1>成果の記録</h1>
+  <span class="sp"></span>
+  <a href="report.html">訪問報告</a>
+  <span id="who" class="muted"></span>
+  <button id="btnLogout" class="small hidden">ログアウト</button>
+  <button id="btnSettings" class="small">接続設定</button>
+</header>
+
+<main>
+  <div id="modeBanner"></div>
+
+  <section class="card hidden" id="loginCard">
+    <h2>ログイン</h2>
+    <input type="email" id="loginEmail" placeholder="メールアドレス" autocomplete="username">
+    <div style="height:8px"></div>
+    <input type="password" id="loginPass" placeholder="パスワード" autocomplete="current-password">
+    <div style="height:10px"></div>
+    <button class="primary" id="btnLogin" style="width:100%">ログイン</button>
+    <p class="muted" id="loginMsg"></p>
+  </section>
+
+  <div id="app" class="hidden">
+    <!-- ========== 一覧 ========== -->
+    <div id="vList">
+      <section class="card">
+        <h2 id="kpiTitle">今月の成果</h2>
+        <div class="kpi" id="kpi"></div>
+      </section>
+      <section class="card">
+        <div class="tabs" id="tabs"></div>
+        <input type="search" id="listQ" placeholder="呼び名・紹介元で検索" autocomplete="off">
+        <div id="list"></div>
+      </section>
+    </div>
+
+    <!-- ========== 登録・編集 ========== -->
+    <section class="card hidden" id="vForm">
+      <div class="row" style="justify-content:space-between;margin-bottom:6px">
+        <h2 id="formTitle" style="margin:0">新しい問合せ</h2>
+        <button class="small ghost" id="formBack">戻る</button>
+      </div>
+
+      <label class="f">問合せ日 <span class="err">必須</span></label>
+      <div class="datebox"><span class="dtext" id="fDateDow"></span><svg class="cal" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><input type="date" id="fDate" aria-label="問合せ日"></div>
+
+      <label class="f">呼び名 <span class="err">必須</span></label>
+      <input type="text" id="fLabel" placeholder="例：A様（80代女性）" autocomplete="off">
+      <div class="hint">氏名・病名・住所などは書かないでください。</div>
+
+      <label class="f">問合せの経路 <span class="err">必須</span></label>
+      <div class="seg" id="fRoute">
+        <button data-v="営業先からの紹介">営業先から<br>の紹介</button>
+        <button data-v="家族・本人から直接">家族・本人<br>から直接</button>
+        <button data-v="紹介会社">紹介会社</button>
+      </div>
+
+      <div id="fOrgBox" class="hidden">
+        <label class="f" id="fOrgLabel">紹介元</label>
+        <div id="fOrgPicked"></div>
+        <div id="fOrgSearch">
+          <input type="search" id="fOrgQ" placeholder="名前・住所・電話番号で検索" autocomplete="off">
+          <div class="results" id="fOrgResults"></div>
+          <button class="ghost small" id="fNewOrgBtn" style="margin-top:6px">＋ 一覧にない場合は登録</button>
+          <div class="sub hidden" id="fNewOrg">
+            <input type="text" id="fNewOrgName" placeholder="名称">
+            <div style="height:8px"></div>
+            <select id="fNewOrgKind"><option>居宅介護支援</option><option>病院</option><option>地域包括</option><option>紹介会社</option><option>その他</option></select>
+            <div class="row" style="margin-top:8px"><button class="primary small" id="fNewOrgSave">登録して選ぶ</button><button class="ghost small" id="fNewOrgCancel">やめる</button></div>
+          </div>
+        </div>
+        <div id="fContactBox" class="hidden">
+          <label class="f">紹介してくれた担当者 <span class="muted">任意</span></label>
+          <select id="fContact"></select>
+        </div>
+      </div>
+
+      <label class="f">きっかけ・経路のメモ <span class="muted">任意</span></label>
+      <input type="text" id="fRouteNote" placeholder="例：チラシを見て／〇〇さんの紹介で">
+
+      <label class="f">社内の担当</label>
+      <select id="fStaff"></select>
+
+      <label class="f">メモ <span class="muted">任意</span></label>
+      <textarea id="fNote" placeholder="希望の入居時期、予算、気にされている点など"></textarea>
+    </section>
+
+    <!-- ========== 詳細 ========== -->
+    <section class="card hidden" id="vDetail"></section>
+  </div>
+</main>
+
+<div class="savebar hidden" id="bar">
+  <div class="in">
+    <div class="msg" id="barMsg"></div>
+    <button class="primary" id="barBtn">＋ 新しい問合せを登録</button>
+  </div>
+</div>
+
+<dialog id="settingsDlg">
+  <h2 style="margin:0 0 6px;font-size:16px">Supabaseの接続設定</h2>
+  <label class="f">Project URL</label>
+  <input type="text" id="cfgUrl" placeholder="https://xxxx.supabase.co">
+  <label class="f">anon public key（sb_publishable_…）</label>
+  <input type="password" id="cfgKey">
+  <div class="row" style="margin-top:16px;justify-content:flex-end">
+    <button id="cfgClear">クリア</button>
+    <button id="cfgCancel">閉じる</button>
+    <button class="primary" id="cfgSave">保存</button>
+  </div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nfkc = s => String(s ?? '').normalize('NFKC').replace(/\s+/g,' ').trim();
+const clean = s => String(s ?? '').replace(/\s+/g, ' ').trim();   // 入力した文字はそのまま（空白だけ整える）
+const searchKey = s => nfkc(s).toLowerCase().replace(/[ぁ-ゖ]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60)).replace(/[\s\-ー－]/g, '');
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const todayStr = () => ymd(new Date());
+const WDAYS = '日月火水木金土';
+const fmtDate = s => { if (!s) return ''; const [y,m,d] = String(s).slice(0,10).split('-'); return `${y}/${+m}/${+d}（${WDAYS[new Date(+y, m - 1, +d).getDay()]}）`; };
+const shortDate = s => { if (!s) return ''; const [,m,d] = String(s).slice(0,10).split('-'); return `${+m}/${+d}`; };
+const daysSince = s => s ? Math.round((new Date(todayStr() + 'T00:00:00') - new Date(String(s).slice(0,10) + 'T00:00:00')) / 86400000) : null;
+const areaOf = o => o ? (o.city === '名古屋市' ? (o.ward ? `名古屋市 ${o.ward}` : '名古屋市') : (o.city || '')) : '';
+const CAL = '<svg class="cal" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const LOST_REASONS = ['他施設に決定', '費用が合わない', '入院が続く・状態の変化', '在宅での生活を続ける', 'ご逝去', '連絡が取れなくなった', 'その他'];
+const ROUTE_NEEDS_ORG = r => r === '営業先からの紹介' || r === '紹介会社';
+
+// 日付欄の横に曜日と「今日から何日」を表示
+function showDow(id){
+  const v = $(id).value, el = $(id + 'Dow');
+  if (!el) return;
+  if (!v) { el.innerHTML = '<span class="ph">日付を選択</span>'; return; }
+  const [y, m, d] = v.split('-').map(Number);
+  const dt = new Date(y, m - 1, d), w = dt.getDay();
+  const diff = -daysSince(v);
+  const rel = diff === 0 ? '今日' : diff === -1 ? '昨日' : diff === 1 ? '明日' : diff > 0 ? `${diff}日後` : `${-diff}日前`;
+  el.innerHTML = `${y}/${m}/${d}（<span class="${w === 0 ? 'sun' : w === 6 ? 'sat' : ''}">${WDAYS[w]}</span>）<small>${rel}</small>`;
+}
+function bindDate(id){
+  const i = $(id);
+  ['input','change'].forEach(t => i.addEventListener(t, () => showDow(id)));
+  i.addEventListener('click', e => { try { e.target.showPicker(); } catch {} });
+}
+
+// ---------------- 状態 ----------------
+let sb = null, demo = true, session = null, staffRole = null, meId = null;
+let orgs = [], cases = [], staffList = [], contactsById = new Map();
+let view = 'list', tab = '進行中', curId = null;
+let F = null;   // 入力中のフォーム
+
+// ---------------- デモ用データ ----------------
+const DEMO = {
+  orgs: [
+    {id:'d1', kind:'居宅介護支援', name:'千種区介護保険事業所', city:'名古屋市', ward:'千種区', address:'名古屋市千種区西崎町2丁目4番地の1', phone:'052-763-7842'},
+    {id:'d3', kind:'病院', name:'愛知県がんセンター', city:'名古屋市', ward:'千種区', address:'名古屋市千種区鹿子殿1-1', phone:'052-762-6111'},
+    {id:'d6', kind:'紹介会社', name:'見本の紹介センター', city:'名古屋市', ward:'中区', address:'', phone:''},
+  ],
+  contacts: { d1: [{id:'c1', name:'山田 花子', title:'ケアマネジャー'}] },
+  staff: [{id:'s1', name:'あかね'}],
+  cases: [
+    {id:'k1', prospect_label:'A様（80代女性）', status:'見学', inquiry_route:'営業先からの紹介', source_organization_id:'d1', source_contact_id:'c1', assigned_staff_id:'s1', inquiry_date:'2026-10-03', tour_date:'2026-10-10', move_in_date:null, lost_date:null, lost_reason:null, route_note:null, note:'11月中の入居を希望'},
+    {id:'k2', prospect_label:'B様（90代男性）', status:'問合せ', inquiry_route:'家族・本人から直接', source_organization_id:null, source_contact_id:null, assigned_staff_id:'s1', inquiry_date:'2026-10-14', tour_date:null, move_in_date:null, lost_date:null, lost_reason:null, route_note:'チラシを見て娘さんから電話', note:null},
+    {id:'k3', prospect_label:'C様（80代男性）', status:'入居', inquiry_route:'営業先からの紹介', source_organization_id:'d3', source_contact_id:null, assigned_staff_id:'s1', inquiry_date:'2026-09-02', tour_date:'2026-09-09', move_in_date:'2026-10-01', lost_date:null, lost_reason:null, route_note:null, note:null},
+    {id:'k4', prospect_label:'D様（70代女性）', status:'失注', inquiry_route:'紹介会社', source_organization_id:'d6', source_contact_id:null, assigned_staff_id:'s1', inquiry_date:'2026-09-20', tour_date:'2026-09-25', move_in_date:null, lost_date:'2026-10-05', lost_reason:'他施設に決定：費用面で別の施設に', route_note:null, note:null},
+  ],
+  history: {},
+};
+
+// ---------------- 接続 ----------------
+function loadCfg(){
+  const norm = c => (c && c.url && c.key) ? { url: String(c.url).trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, ''), key: String(c.key).trim() } : null;
+  const shared = norm(window.EIGYO_CONFIG);
+  if (shared) return { ...shared, shared: true };
+  try { return norm(JSON.parse(localStorage.getItem('eigyo_sb_cfg') || 'null')); } catch { return null; }
+}
+function saveCfg(c){ try { c ? localStorage.setItem('eigyo_sb_cfg', JSON.stringify(c)) : localStorage.removeItem('eigyo_sb_cfg'); } catch {} }
+const canWrite = () => demo || staffRole === 'admin' || staffRole === 'sales';
+
+async function initConn(){
+  const cfg = loadCfg();
+  $('btnSettings').classList.toggle('hidden', !!cfg?.shared);
+  sb = null; demo = true; session = null;
+  if (cfg?.url && cfg?.key) {
+    try {
+      sb = supabase.createClient(cfg.url, cfg.key);
+      demo = false;
+      const { data } = await sb.auth.getSession();
+      session = data.session;
+    } catch (e) { sb = null; demo = true; }
+  }
+  await renderConn();
+}
+async function renderConn(){
+  staffRole = null; meId = null;
+  if (!demo && session) {
+    staffRole = (await sb.rpc('current_staff_role')).data || null;
+    meId = (await sb.rpc('current_staff_id')).data || null;
+  }
+  const b = $('modeBanner');
+  if (demo) b.innerHTML = '<div class="banner demo">デモモードです。見本のデータで操作を試せますが、保存はされません。</div>';
+  else if (session && !staffRole) b.innerHTML = '<div class="banner err">このアカウントはスタッフとして登録されていないため、利用できません。</div>';
+  else if (session && staffRole === 'viewer') b.innerHTML = '<div class="banner err">閲覧のみの権限では、入居検討者の情報は表示されません。</div>';
+  else b.innerHTML = '';
+  const needLogin = !demo && !session;
+  const show = !needLogin && canWrite();
+  $('loginCard').classList.toggle('hidden', !needLogin);
+  $('app').classList.toggle('hidden', !show);
+  $('bar').classList.toggle('hidden', !show);
+  $('btnLogout').classList.toggle('hidden', demo || !session);
+  if (show) await loadAll();
+}
+$('btnSettings').onclick = () => { const c = loadCfg()||{}; $('cfgUrl').value = c.url||''; $('cfgKey').value = c.key||''; $('settingsDlg').showModal(); };
+$('cfgCancel').onclick = () => $('settingsDlg').close();
+$('cfgClear').onclick = async () => { saveCfg(null); $('settingsDlg').close(); await initConn(); };
+$('cfgSave').onclick = async () => {
+  const url = $('cfgUrl').value.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, ''), key = $('cfgKey').value.trim();
+  saveCfg(url && key ? {url, key} : null); $('settingsDlg').close(); await initConn();
+};
+$('btnLogin').onclick = async () => {
+  $('loginMsg').textContent = 'ログイン中…';
+  const { data, error } = await sb.auth.signInWithPassword({ email: $('loginEmail').value.trim(), password: $('loginPass').value });
+  if (error) { $('loginMsg').textContent = 'ログインできませんでした：' + error.message; return; }
+  session = data.session; $('loginMsg').textContent = ''; await renderConn();
+};
+$('btnLogout').onclick = async () => { await sb.auth.signOut(); session = null; await renderConn(); };
+
+// ---------------- データ ----------------
+async function fetchAll(table, cols, orderCol, filter = q => q){
+  const out = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await filter(sb.from(table).select(cols)).order(orderCol).range(from, from + 999);
+    if (error) throw error;
+    out.push(...data);
+    if (data.length < 1000) break;
+  }
+  return out;
+}
+const CASE_COLS = 'id,prospect_label,status,inquiry_route,route_note,source_organization_id,source_contact_id,assigned_staff_id,inquiry_date,tour_date,move_in_date,lost_date,lost_reason,note,created_at';
+async function loadAll(){
+  try {
+    if (demo) {
+      orgs = DEMO.orgs.map(o => ({...o})); staffList = DEMO.staff; meId = 's1';
+      cases = DEMO.cases.map(c => ({...c}));
+      contactsById = new Map(Object.values(DEMO.contacts).flat().map(c => [c.id, c]));
+    } else {
+      $('list').innerHTML = '<p class="muted">読み込み中…</p>';
+      const [o, c, s] = await Promise.all([
+        fetchAll('organizations', 'id,kind,name,city,ward,address,phone', 'id', q => q.eq('is_active', true)),
+        fetchAll('cases', CASE_COLS, 'id'),
+        fetchAll('staff', 'id,name', 'name', q => q.eq('is_active', true)),
+      ]);
+      orgs = o; cases = c; staffList = s;
+      await loadContacts(cases.map(x => x.source_contact_id).filter(Boolean));
+    }
+    orgs.forEach(o => o._key = searchKey(`${o.name} ${o.address||''} ${o.phone||''}`));
+    $('who').textContent = staffList.find(s => s.id === meId)?.name || '';
+    const h = location.hash.replace('#', '');
+    if (h === 'new') openForm(); else if (h && cases.some(c => c.id === h)) openDetail(h); else showList();
+  } catch (e) {
+    $('modeBanner').innerHTML = `<div class="banner err">読み込みに失敗しました：${esc(e.message)}${/inquiry_route|route_note/.test(e.message) ? '<br>成果の記録用のSQL（eigyo_migration_seika.sql）がまだ実行されていないようです。' : ''}</div>`;
+  }
+}
+async function loadContacts(ids){
+  ids = [...new Set(ids)].filter(id => !contactsById.has(id));
+  if (demo || !ids.length) return;
+  const { data } = await sb.from('contacts').select('id,name,title,organization_id').in('id', ids);
+  (data || []).forEach(c => contactsById.set(c.id, c));
+}
+async function contactsOf(orgId){
+  if (demo) return DEMO.contacts[orgId] || [];
+  const { data } = await sb.from('contacts').select('id,name,title,organization_id').eq('organization_id', orgId).eq('is_active', true).order('name');
+  (data || []).forEach(c => contactsById.set(c.id, c));
+  return data || [];
+}
+const orgById = id => orgs.find(o => o.id === id);
+const staffName = id => staffList.find(s => s.id === id)?.name || '';
+function sourceText(c){
+  const o = orgById(c.source_organization_id), ct = contactsById.get(c.source_contact_id);
+  if (o) return o.name + (ct ? `（${ct.name}）` : '');
+  return c.inquiry_route === '家族・本人から直接' ? '家族・本人から直接' : (c.inquiry_route || '');
+}
+
+// ---------------- 一覧 ----------------
+const TABS = ['進行中', '入居', '失注', 'すべて'];
+const inTab = (c, t) => t === 'すべて' || (t === '進行中' ? (c.status === '問合せ' || c.status === '見学') : c.status === t);
+function showList(){
+  view = 'list'; curId = null; F = null;
+  if (location.hash) history.replaceState(null, '', location.pathname);
+  $('vList').classList.remove('hidden'); $('vForm').classList.add('hidden'); $('vDetail').classList.add('hidden');
+  $('bar').classList.remove('hidden'); $('barBtn').textContent = '＋ 新しい問合せを登録'; $('barBtn').disabled = false; $('barMsg').textContent = '';
+  // 今月の件数（それぞれの日付で数える）
+  const ym = todayStr().slice(0, 7), m = +ym.slice(5);
+  const n = (k, extra = () => true) => cases.filter(c => (c[k] || '').slice(0, 7) === ym && extra(c)).length;
+  $('kpiTitle').textContent = `${m}月の成果`;
+  $('kpi').innerHTML = `<div><b>${n('inquiry_date')}</b><span>問合せ</span></div><div><b>${n('tour_date')}</b><span>見学</span></div><div><b>${n('move_in_date', c => c.status === '入居')}</b><span>入居</span></div>`;
+  $('tabs').innerHTML = TABS.map(t => `<button data-t="${t}" class="${tab === t ? 'on' : ''}">${t} ${cases.filter(c => inTab(c, t)).length}</button>`).join('');
+  renderList();
+  window.scrollTo({ top: 0 });
+}
+function renderList(){
+  const q = searchKey($('listQ').value);
+  const list = cases.filter(c => inTab(c, tab) && (!q || searchKey(`${c.prospect_label} ${sourceText(c)} ${c.route_note||''}`).includes(q)))
+    .sort((a, b) => String(b.inquiry_date || b.created_at).localeCompare(String(a.inquiry_date || a.created_at)));
+  $('list').innerHTML = list.length ? list.map(c => {
+    const last = c.status === '入居' ? `入居 ${shortDate(c.move_in_date)}` : c.status === '失注' ? `失注 ${shortDate(c.lost_date)}` : c.status === '見学' ? `見学 ${shortDate(c.tour_date)}` : `問合せから${daysSince(c.inquiry_date)}日`;
+    return `<button class="case" data-id="${esc(c.id)}">
+      <div class="top"><span class="st st-${esc(c.status)}">${esc(c.status)}</span><b>${esc(c.prospect_label)}</b><span class="age">${esc(last)}</span></div>
+      <div class="csub">${esc(sourceText(c))}　問合せ ${esc(shortDate(c.inquiry_date))}${c.assigned_staff_id ? '　担当 ' + esc(staffName(c.assigned_staff_id)) : ''}</div>
+    </button>`;
+  }).join('') : `<p class="muted" style="margin-top:12px">${cases.length ? '該当する案件はありません。' : 'まだ案件がありません。問合せがあったら、下のボタンから登録してください。'}</p>`;
+}
+$('tabs').onclick = e => { const b = e.target.closest('button'); if (b) { tab = b.dataset.t; showList(); } };
+$('listQ').addEventListener('input', renderList);
+$('list').onclick = e => { const b = e.target.closest('.case'); if (b) openDetail(b.dataset.id); };
+
+// ---------------- 登録・編集 ----------------
+function openForm(editId){
+  const c = editId ? cases.find(x => x.id === editId) : null;
+  view = 'form'; curId = editId || null;
+  F = {
+    id: c?.id || null, route: c?.inquiry_route || '', orgId: c?.source_organization_id || null,
+    contactId: c?.source_contact_id || '', contacts: [],
+  };
+  $('formTitle').textContent = c ? '案件の編集' : '新しい問合せ';
+  $('fDate').value = c?.inquiry_date || todayStr(); showDow('fDate');
+  $('fLabel').value = c?.prospect_label || '';
+  $('fRouteNote').value = c?.route_note || '';
+  $('fNote').value = c?.note || '';
+  $('fStaff').innerHTML = '<option value="">（未設定）</option>' + staffList.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+  $('fStaff').value = c ? (c.assigned_staff_id || '') : (meId || '');
+  $('fOrgQ').value = ''; $('fNewOrg').classList.add('hidden');
+  $('vList').classList.add('hidden'); $('vDetail').classList.add('hidden'); $('vForm').classList.remove('hidden');
+  $('bar').classList.remove('hidden'); $('barBtn').textContent = c ? '変更を保存' : 'この内容で登録'; $('barBtn').disabled = false; $('barMsg').textContent = '';
+  renderForm();
+  if (F.orgId) loadFormContacts();
+  window.scrollTo({ top: 0 });
+}
+function renderForm(){
+  [...$('fRoute').children].forEach(b => b.classList.toggle('on', b.dataset.v === F.route));
+  const needOrg = ROUTE_NEEDS_ORG(F.route);
+  $('fOrgBox').classList.toggle('hidden', !needOrg);
+  $('fOrgLabel').innerHTML = F.route === '紹介会社' ? '紹介会社 <span class="err">必須</span>' : '紹介元の営業先 <span class="err">必須</span>';
+  const o = orgById(F.orgId);
+  $('fOrgPicked').innerHTML = o ? `<div class="picked"><div class="t"><b>${esc(o.name)}</b><span>${esc(o.kind)}　${esc(areaOf(o))}</span></div><button class="small" id="fOrgChange">変更</button></div>` : '';
+  $('fOrgSearch').classList.toggle('hidden', !!o);
+  $('fContactBox').classList.toggle('hidden', !o || F.route === '紹介会社' && !F.contacts.length);
+  if (!o) renderOrgResults();
+  $('fContact').innerHTML = '<option value="">記録しない</option>' + F.contacts.map(c => `<option value="${esc(c.id)}">${esc(c.name)}${c.title ? '（' + esc(c.title) + '）' : ''}</option>`).join('');
+  $('fContact').value = F.contactId || '';
+}
+function renderOrgResults(){
+  const q = searchKey($('fOrgQ').value);
+  const pool = orgs.filter(o => F.route === '紹介会社' ? o.kind === '紹介会社' : o.kind !== '紹介会社');
+  if (!q) {
+    $('fOrgResults').innerHTML = F.route === '紹介会社' && pool.length
+      ? pool.slice(0, 20).map(orgBtn).join('')
+      : `<p class="muted" style="margin:4px 0 0">${F.route === '紹介会社' ? '紹介会社はまだ登録されていません。下の「＋ 一覧にない場合は登録」から登録してください。' : '居宅・病院などの名前で検索してください。'}</p>`;
+    return;
+  }
+  const list = pool.filter(o => o._key.includes(q));
+  $('fOrgResults').innerHTML = list.slice(0, 20).map(orgBtn).join('') + (list.length === 0 ? '<p class="muted" style="margin:4px 0 0">見つかりませんでした。</p>' : list.length > 20 ? `<p class="muted" style="margin:4px 0 0">ほか${list.length - 20}件。もう少し詳しく入力してください。</p>` : '');
+}
+const orgBtn = o => `<button class="res" data-id="${esc(o.id)}"><b>${esc(o.name)}</b><span>${esc(o.kind)}　${esc(areaOf(o))}</span></button>`;
+async function loadFormContacts(){
+  const id = F.orgId;
+  const list = await contactsOf(id);
+  if (!F || F.orgId !== id) return;
+  F.contacts = list; renderForm();
+}
+$('fRoute').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const before = F.route; F.route = b.dataset.v;
+  // 経路を変えたら、合わない紹介元は外す
+  const o = orgById(F.orgId);
+  if (!ROUTE_NEEDS_ORG(F.route) || (o && (F.route === '紹介会社') !== (o.kind === '紹介会社'))) { F.orgId = null; F.contactId = ''; F.contacts = []; }
+  if (before !== F.route) $('fOrgQ').value = '';
+  renderForm();
+};
+$('fOrgQ').addEventListener('input', renderOrgResults);
+$('fOrgResults').onclick = e => { const b = e.target.closest('.res'); if (!b) return; F.orgId = b.dataset.id; F.contactId = ''; F.contacts = []; renderForm(); loadFormContacts(); };
+$('fOrgPicked').onclick = e => { if (e.target.id === 'fOrgChange') { F.orgId = null; F.contactId = ''; F.contacts = []; renderForm(); $('fOrgQ').focus(); } };
+$('fContact').onchange = e => { F.contactId = e.target.value; };
+$('fNewOrgBtn').onclick = () => { $('fNewOrg').classList.remove('hidden'); $('fNewOrgName').value = $('fOrgQ').value; $('fNewOrgKind').value = F.route === '紹介会社' ? '紹介会社' : '居宅介護支援'; $('fNewOrgName').focus(); };
+$('fNewOrgCancel').onclick = () => $('fNewOrg').classList.add('hidden');
+$('fNewOrgSave').onclick = async () => {
+  const name = nfkc($('fNewOrgName').value), kind = $('fNewOrgKind').value;
+  if (!name) { $('fNewOrgName').focus(); return; }
+  const same = orgs.find(o => o.kind === kind && searchKey(o.name) === searchKey(name));
+  let o = same;
+  if (!o) {
+    if (demo) o = { id: 'd' + Date.now(), kind, name, city: null, ward: null, address: null, phone: null };
+    else {
+      const { data, error } = await sb.from('organizations').insert({ kind, name }).select('id,kind,name,city,ward,address,phone').single();
+      if (error) { alert('登録できませんでした：' + error.message); return; }
+      o = data;
+    }
+    o._key = searchKey(o.name); orgs.push(o);
+  }
+  if (F.route === '紹介会社' && o.kind !== '紹介会社') F.route = '営業先からの紹介';
+  if (F.route === '営業先からの紹介' && o.kind === '紹介会社') F.route = '紹介会社';
+  F.orgId = o.id; F.contactId = ''; F.contacts = [];
+  $('fNewOrg').classList.add('hidden'); renderForm(); loadFormContacts();
+};
+$('formBack').onclick = () => F?.id ? openDetail(F.id) : showList();
+
+async function saveForm(){
+  const isNew = !F.id;
+  const label = clean($('fLabel').value), date = $('fDate').value;
+  const err = !date ? '問合せ日を入力してください。'
+    : !label ? '呼び名を入力してください。'
+    : !F.route ? '問合せの経路を選んでください。'
+    : ROUTE_NEEDS_ORG(F.route) && !F.orgId ? (F.route === '紹介会社' ? '紹介会社を選んでください。' : '紹介元の営業先を選んでください。')
+    : null;
+  if (err) { $('barMsg').innerHTML = `<span class="err">${esc(err)}</span>`; return; }
+  const row = {
+    prospect_label: label, inquiry_date: date, inquiry_route: F.route,
+    source_organization_id: ROUTE_NEEDS_ORG(F.route) ? F.orgId : null,
+    source_contact_id: ROUTE_NEEDS_ORG(F.route) && F.contactId ? F.contactId : null,
+    route_note: clean($('fRouteNote').value) || null,
+    assigned_staff_id: $('fStaff').value || null,
+    note: $('fNote').value.trim() || null,
+  };
+  $('barBtn').disabled = true; $('barMsg').textContent = '保存中…';
+  let saved;
+  if (demo) {
+    if (F.id) { saved = Object.assign(cases.find(c => c.id === F.id), row); }
+    else { saved = { id: 'k' + Date.now(), status: '問合せ', tour_date: null, move_in_date: null, lost_date: null, lost_reason: null, created_at: new Date().toISOString(), ...row }; cases.push(saved); }
+  } else {
+    const q = F.id ? sb.from('cases').update(row).eq('id', F.id).select(CASE_COLS).single()
+                   : sb.from('cases').insert({ ...row, status: '問合せ' }).select(CASE_COLS).single();
+    const { data, error } = await q;
+    if (error) { $('barBtn').disabled = false; $('barMsg').innerHTML = `<span class="err">保存できませんでした：${esc(error.message)}</span>`; return; }
+    saved = data;
+    const i = cases.findIndex(c => c.id === saved.id);
+    i >= 0 ? (cases[i] = saved) : cases.push(saved);
+    await loadContacts([saved.source_contact_id].filter(Boolean));
+  }
+  F = null;
+  openDetail(saved.id, isNew ? '問合せを登録しました。見学・入居が決まったら、下のボタンで記録してください。' : '保存しました。');
+}
+
+// ---------------- 詳細 ----------------
+async function openDetail(id, flash){
+  const c = cases.find(x => x.id === id); if (!c) return showList();
+  view = 'detail'; curId = id; F = null;
+  history.replaceState(null, '', '#' + id);
+  $('vList').classList.add('hidden'); $('vForm').classList.add('hidden'); $('vDetail').classList.remove('hidden');
+  $('bar').classList.add('hidden');
+  renderDetail(c, flash);
+  window.scrollTo({ top: 0 });
+  // 履歴は後から読み込んで、その枠だけを更新する（入力中の欄を消さないため）
+  const hist = await loadHistory(id);
+  if (curId === id && view === 'detail' && $('dHist')) $('dHist').innerHTML = histHtml(hist);
+}
+async function loadHistory(id){
+  if (demo) return DEMO.history[id] || [];
+  const { data } = await sb.from('case_status_history').select('from_status,to_status,changed_at,changed_by').eq('case_id', id).order('changed_at');
+  return data || [];
+}
+const histHtml = hist => hist && hist.length ? `<div class="hist" style="margin-top:16px"><div class="muted" style="border:0">進み具合の履歴</div>${hist.map(h => `<div>${esc(fmtDate(h.changed_at))}　${h.from_status ? esc(h.from_status) + ' → ' : ''}<b>${esc(h.to_status)}</b>${h.changed_by ? '　<span class="muted">' + esc(staffName(h.changed_by)) + '</span>' : ''}</div>`).join('')}</div>` : '';
+function renderDetail(c, flash){
+  const o = orgById(c.source_organization_id), ct = contactsById.get(c.source_contact_id);
+  const lost = c.status === '失注';
+  const step = (name, date, done) => `<div class="${done ? 'done' : (lost ? 'lost' : '')}"><b>${name}</b>${date ? esc(fmtDate(date)) : '—'}</div>`;
+  const acts = {
+    '問合せ': `<div class="acts"><button class="primary" data-a="見学">見学した</button><div class="acts two" style="margin:0"><button data-a="入居">入居が決まった</button><button data-a="失注">失注にする</button></div></div>`,
+    '見学':   `<div class="acts two"><button class="primary" data-a="入居">入居が決まった</button><button data-a="失注">失注にする</button></div>`,
+    '入居':   `<div class="acts"><button class="ghost" data-a="戻す">入居を取り消す（進行中に戻す）</button></div>`,
+    '失注':   `<div class="acts"><button class="ghost" data-a="戻す">進行中に戻す</button></div>`,
+  }[c.status];
+  $('vDetail').innerHTML = `
+    <div class="row" style="justify-content:space-between">
+      <button class="small ghost" id="dBack">‹ 一覧</button>
+      <button class="small" id="dEdit">内容を編集</button>
+    </div>
+    ${flash ? `<div class="banner ok" style="margin:10px 0 0">${esc(flash)}</div>` : ''}
+    <div class="row" style="margin-top:12px;gap:10px"><span class="st st-${esc(c.status)}">${esc(c.status)}</span><b style="font-size:19px">${esc(c.prospect_label)}</b></div>
+    <div class="steps">
+      ${step('問合せ', c.inquiry_date, true)}
+      ${step('見学', c.tour_date, !!c.tour_date)}
+      ${lost ? `<div class="lost"><b>失注</b>${esc(fmtDate(c.lost_date))}</div>` : step('入居', c.move_in_date, c.status === '入居')}
+    </div>
+    ${lost && c.lost_reason ? `<div class="muted">理由：${esc(c.lost_reason)}</div>` : ''}
+    <dl class="dl">
+      <dt>経路</dt><dd>${esc(c.inquiry_route || '—')}</dd>
+      ${o ? `<dt>${c.inquiry_route === '紹介会社' ? '紹介会社' : '紹介元'}</dt><dd>${esc(o.name)}<br><span class="muted">${esc(o.kind)}　${esc(areaOf(o))}</span></dd>` : ''}
+      ${ct ? `<dt>紹介者</dt><dd>${esc(ct.name)}${ct.title ? `<span class="muted">（${esc(ct.title)}）</span>` : ''}</dd>` : ''}
+      ${c.route_note ? `<dt>きっかけ</dt><dd>${esc(c.route_note)}</dd>` : ''}
+      <dt>社内の担当</dt><dd>${esc(staffName(c.assigned_staff_id) || '—')}</dd>
+      ${c.note ? `<dt>メモ</dt><dd style="white-space:pre-wrap">${esc(c.note)}</dd>` : ''}
+    </dl>
+    ${acts}
+    <div class="sub hidden" id="dSub"></div>
+    <div id="dHist"></div>
+    ${staffRole === 'admin' && !demo ? '<div class="acts" style="margin-top:20px"><button class="danger small" id="dDelete">この案件を削除</button></div>' : ''}`;
+}
+$('vDetail').onclick = async e => {
+  const t = e.target, c = cases.find(x => x.id === curId); if (!c) return;
+  if (t.id === 'dBack') return showList();
+  if (t.id === 'dEdit') return openForm(c.id);
+  if (t.id === 'dDelete') return deleteCase(c);
+  const a = t.closest('button[data-a]')?.dataset.a;
+  if (a) return openStatusForm(c, a);
+  if (t.id === 'dCancel') { $('dSub').classList.add('hidden'); return; }
+  if (t.id === 'dOk') return applyStatus(c, $('dSub').dataset.a);
+};
+
+// 見学・入居・失注・戻す
+function openStatusForm(c, a){
+  const sub = $('dSub'); sub.dataset.a = a; sub.classList.remove('hidden');
+  if (a === '戻す') {
+    const back = c.tour_date ? '見学' : '問合せ';
+    sub.innerHTML = `<div>「${esc(back)}」の状態に戻します。${c.status === '入居' ? '入居日' : '失注日と理由'}は消えます。</div>
+      <div class="row" style="margin-top:10px"><button class="primary" id="dOk">戻す</button><button class="ghost" id="dCancel">やめる</button></div><p class="err" id="dErr"></p>`;
+    return;
+  }
+  const label = { '見学': '見学日', '入居': '入居日（決まった日でも可）', '失注': '失注した日' }[a];
+  sub.innerHTML = `<label class="f" style="margin-top:0">${label}</label>
+    <div class="datebox"><span class="dtext" id="dDateDow"></span>${CAL}<input type="date" id="dDate" aria-label="${esc(label)}"></div>
+    ${a === '失注' ? `<label class="f">理由 <span class="err">必須</span></label>
+      <select id="dReason"><option value="">選んでください</option>${LOST_REASONS.map(r => `<option>${r}</option>`).join('')}</select>
+      <input type="text" id="dReasonNote" placeholder="補足（任意）例：〇〇ホームに決定" style="margin-top:8px">` : ''}
+    ${a === '入居' && !c.tour_date ? '<div class="hint">見学日が入っていません。見学していた場合は、先に「見学した」で記録すると見学数に入ります。</div>' : ''}
+    <div class="row" style="margin-top:10px"><button class="primary" id="dOk">${a === '失注' ? '失注にする' : '記録する'}</button><button class="ghost" id="dCancel">やめる</button></div>
+    <p class="err" id="dErr"></p>`;
+  $('dDate').value = todayStr(); bindDate('dDate'); showDow('dDate');
+  sub.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+async function applyStatus(c, a){
+  let patch;
+  if (a === '戻す') {
+    patch = c.status === '入居' ? { status: c.tour_date ? '見学' : '問合せ', move_in_date: null }
+                                : { status: c.tour_date ? '見学' : '問合せ', lost_date: null, lost_reason: null };
+  } else {
+    const d = $('dDate').value;
+    if (!d) { $('dErr').textContent = '日付を入力してください。'; return; }
+    if (c.inquiry_date && d < c.inquiry_date) { $('dErr').textContent = '問合せ日より前の日付になっています。'; return; }
+    if (a === '見学') patch = { status: '見学', tour_date: d };
+    if (a === '入居') patch = { status: '入居', move_in_date: d };
+    if (a === '失注') {
+      const r = $('dReason').value, note = clean($('dReasonNote').value);
+      if (!r) { $('dErr').textContent = '理由を選んでください。'; return; }
+      patch = { status: '失注', lost_date: d, lost_reason: note ? `${r}：${note}` : r };
+    }
+  }
+  $('dOk').disabled = true;
+  if (demo) {
+    Object.assign(c, patch);
+    (DEMO.history[c.id] ||= []).push({ from_status: null, to_status: patch.status, changed_at: new Date().toISOString(), changed_by: meId });
+  } else {
+    const { data, error } = await sb.from('cases').update(patch).eq('id', c.id).select(CASE_COLS).single();
+    if (error) { $('dOk').disabled = false; $('dErr').textContent = '保存できませんでした：' + error.message; return; }
+    Object.assign(c, data);
+  }
+  const msg = { '見学': '見学を記録しました。', '入居': '入居を記録しました。', '失注': '失注として記録しました。', '戻す': '進行中に戻しました。' }[a];
+  openDetail(c.id, msg);
+}
+async function deleteCase(c){
+  if (!confirm(`「${c.prospect_label}」の案件を削除します。元に戻せません。よろしいですか？`)) return;
+  const { data, error } = await sb.from('cases').delete().eq('id', c.id).select('id');
+  if (error || !data || !data.length) { alert('削除できませんでした。' + (error ? error.message : '削除は管理者のみできます。')); return; }
+  cases = cases.filter(x => x.id !== c.id);
+  showList();
+}
+
+// ---------------- 下のボタン ----------------
+$('barBtn').onclick = () => view === 'form' ? saveForm() : openForm();
+bindDate('fDate');
+
+initConn();
+</script>
+</body>
+</html>

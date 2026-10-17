@@ -113,6 +113,7 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
 <header>
   <h1>訪問報告</h1>
   <span class="sp"></span>
+  <a href="cases.html">成果</a>
   <a href="import.html">取り込み</a>
   <span id="who" class="muted"></span>
   <button id="btnLogout" class="small hidden">ログアウト</button>
@@ -439,7 +440,7 @@ const matLabel = m => m.monthly ? (S.date ? `${+S.date.slice(0,4)}年${+S.date.s
 const api = {
   async stats(orgId){
     if (demo) return DEMO.stats[orgId] || {visit_count:0, meeting_count:0, last_visit_date:null};
-    const { data } = await sb.from('organization_stats').select('organization_id,visit_count,meeting_count,last_visit_date').eq('organization_id', orgId);
+    const { data } = await sb.from('organization_stats').select('organization_id,visit_count,meeting_count,last_visit_date,referral_count,move_in_count').eq('organization_id', orgId);
     return (data && data[0]) || {visit_count:0, meeting_count:0, last_visit_date:null};
   },
   async contacts(orgId){
@@ -525,7 +526,7 @@ function pickedHtml(o, st, hist){
     <div class="row" style="justify-content:space-between"><span class="badge ${o.kind==='病院'?'hosp':''}">${esc(o.kind)}</span><button class="small" id="btnChangeOrg">変更</button></div>
     <h3>${esc(o.name)}</h3>
     <div class="muted">${esc(o.address || areaOf(o))}${tel ? '　' + tel : ''}</div>
-    ${st ? `<div class="stats"><span>訪問 <b>${+st.visit_count||0}</b> 回</span><span>面会 <b>${+st.meeting_count||0}</b> 回</span><span>最終訪問 <b>${st.last_visit_date ? fmtDate(st.last_visit_date) : '—'}</b></span></div>` : '<div class="muted" style="margin-top:8px">読み込み中…</div>'}
+    ${st ? `<div class="stats"><span>訪問 <b>${+st.visit_count||0}</b> 回</span><span>面会 <b>${+st.meeting_count||0}</b> 回</span><span>最終訪問 <b>${st.last_visit_date ? fmtDate(st.last_visit_date) : '—'}</b></span>${+st.referral_count ? `<span>紹介 <b>${+st.referral_count}</b> 件（入居 ${+st.move_in_count || 0}）</span>` : ''}</div>` : '<div class="muted" style="margin-top:8px">読み込み中…</div>'}
     ${hist && hist.length ? `<div class="hist"><div class="muted" style="border:0">最近の記録</div>${hist.map(h =>
       `<div><b>${fmtDate(h.activity_date)}</b>　${esc(h.type)}${h.type==='訪問' ? (h.met ? '（面会）' : '（不在）') : ''}${h.contact_id && contactName(h.contact_id) ? '・' + esc(contactName(h.contact_id)) : ''}${h.reported_by ? '　<span class="muted">' + esc(staffName(h.reported_by)) + '</span>' : ''}${h.summary ? '<br>' + esc(h.summary.length > 60 ? h.summary.slice(0,60) + '…' : h.summary) : ''}</div>`).join('')}</div>` : ''}
   </div>`;
