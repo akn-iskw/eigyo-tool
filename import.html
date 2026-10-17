@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>営業先の取り込み</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+:root{
+  --bg:#f6f5f1; --card:#ffffff; --line:#e3e1da; --line2:#cfccc3;
+  --text:#24231f; --muted:#6d6b64; --accent:#2f6f5e; --accent-bg:#e4f1ec;
+  --warn:#8a5a0b; --warn-bg:#fbf0d9; --err:#9b2c2c; --err-bg:#fbe9e9;
+  --info:#1f5a8f; --info-bg:#e6f0fa; --radius:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#1b1b19; --card:#252522; --line:#3a3935; --line2:#4a4944;
+    --text:#ecebe6; --muted:#a3a19a; --accent:#7fd0b5; --accent-bg:#1f3a32;
+    --warn:#f2c46b; --warn-bg:#3d3018; --err:#f19a9a; --err-bg:#3f2222;
+    --info:#9cc6ef; --info-bg:#1d3045;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Hiragino Sans","Noto Sans JP","Yu Gothic UI",sans-serif}
+header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:5}
+header h1{font-size:17px;margin:0;font-weight:600}
+header .sp{flex:1}
+main{max-width:1200px;margin:0 auto;padding:20px 16px 80px}
+section.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px}
+section.card h2{font-size:15px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+.num{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--card);font-size:12px;align-items:center;justify-content:center}
+.muted{color:var(--muted);font-size:13px}
+button,select,input[type=text],input[type=password],input[type=email],input[type=number]{font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line2);border-radius:8px;padding:7px 10px}
+button{cursor:pointer}
+button.primary{background:var(--accent);color:var(--card);border-color:var(--accent);font-weight:600}
+button.danger{color:var(--err);border-color:var(--err)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.drop{border:2px dashed var(--line2);border-radius:var(--radius);padding:28px;text-align:center;cursor:pointer}
+.drop.over{border-color:var(--accent);background:var(--accent-bg)}
+.grid-map{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.grid-map label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.grid-map label b{color:var(--text);font-weight:600}
+.req{color:var(--err)}
+.banner{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px}
+.banner.demo{background:var(--warn-bg);color:var(--warn)}
+.banner.ok{background:var(--accent-bg);color:var(--accent)}
+.banner.err{background:var(--err-bg);color:var(--err)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.chip{border:1px solid var(--line2);border-radius:999px;padding:4px 12px;font-size:13px;background:var(--card)}
+.chip.on{background:var(--text);color:var(--card);border-color:var(--text)}
+.tbl-wrap{overflow:auto;max-height:560px;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;white-space:nowrap}
+th{position:sticky;top:0;background:var(--card);z-index:1;font-weight:600}
+td.wrap{white-space:normal;min-width:180px}
+.badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600}
+.b-new{background:var(--accent-bg);color:var(--accent)}
+.b-dupdb{background:var(--info-bg);color:var(--info)}
+.b-dupfile{background:var(--warn-bg);color:var(--warn)}
+.b-err{background:var(--err-bg);color:var(--err)}
+.sheets label{display:inline-flex;gap:6px;align-items:center;margin:0 14px 6px 0;font-size:14px}
+dialog{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);color:var(--text);width:min(460px,92vw);padding:20px}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+dialog label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+dialog input{width:100%}
+.hidden{display:none!important}
+.summary{display:flex;gap:18px;flex-wrap:wrap;margin:6px 0 14px;font-size:14px}
+.summary b{font-size:20px}
+</style>
+</head>
+<body>
+<header>
+  <h1>営業先の取り込み</h1>
+  <span class="sp"></span>
+  <a href="report.html" style="color:var(--muted);font-size:13px">訪問報告</a>
+  <span id="who" class="muted"></span>
+  <button id="btnLogout" class="hidden">ログアウト</button>
+  <button id="btnSettings">接続設定</button>
+</header>
+
+<main>
+  <div id="modeBanner"></div>
+
+  <!-- ログイン -->
+  <section class="card hidden" id="loginCard">
+    <h2>ログイン</h2>
+    <div class="row">
+      <input type="email" id="loginEmail" placeholder="メールアドレス" autocomplete="username">
+      <input type="password" id="loginPass" placeholder="パスワード" autocomplete="current-password">
+      <button class="primary" id="btnLogin">ログイン</button>
+    </div>
+    <p class="muted" id="loginMsg"></p>
+  </section>
+
+  <div id="app">
+    <!-- 1. ファイル -->
+    <section class="card">
+      <h2><span class="num">1</span>ファイルと種別を選ぶ</h2>
+      <div class="row" style="margin-bottom:12px">
+        <label>営業先の種別
+          <select id="kind">
+            <option>居宅介護支援</option><option>病院</option><option>地域包括</option>
+            <option>紹介会社</option><option>その他</option>
+          </select>
+        </label>
+        <span class="muted">1回の取り込みは1種別です。居宅リストと病院リストは別々に取り込んでください。</span>
+      </div>
+      <label class="row" style="font-size:14px;margin-bottom:12px">
+        <input type="checkbox" id="nagoyaOnly">
+        名古屋市16区以外の住所はスキップする（北名古屋市・春日井市などを除外）
+      </label>
+      <div class="drop" id="drop">
+        ここにExcel・CSV・PDFをドロップ、またはクリックして選択
+        <div class="muted">.xlsx / .xls / .csv / .pdf（CSVはShift_JISにも対応）</div>
+        <input type="file" id="file" accept=".xlsx,.xls,.csv,.pdf" class="hidden">
+      </div>
+      <p class="muted" id="fileInfo"></p>
+    </section>
+
+    <!-- 2. シート -->
+    <section class="card hidden" id="sheetCard">
+      <h2><span class="num">2</span>取り込むシート</h2>
+      <div class="sheets" id="sheetList"></div>
+      <label class="row" style="font-size:14px;margin-top:6px">
+        <input type="checkbox" id="sheetAsWard" checked>
+        区の列や住所から区がわからない時は、シート名を区として使う（例：シート「中村区」）
+      </label>
+    </section>
+
+    <!-- 3. 列の割り当て -->
+    <section class="card hidden" id="mapCard">
+      <h2><span class="num">3</span>列の割り当て</h2>
+      <p class="muted" style="margin-top:-6px">見出しから自動で推測しています。違っていたら選び直してください。</p>
+      <div class="grid-map" id="mapGrid"></div>
+    </section>
+
+    <!-- 4. プレビュー -->
+    <section class="card hidden" id="previewCard">
+      <h2><span class="num">4</span>確認して登録</h2>
+      <div class="summary" id="summary"></div>
+      <div class="row">
+        <span class="muted">既存と重複している行の扱い：</span>
+        <select id="bulkDup">
+          <option value="skip">まとめてスキップ</option>
+          <option value="update">まとめて既存を更新（空欄は上書きしない）</option>
+        </select>
+        <button id="btnApplyBulk">反映</button>
+      </div>
+      <div class="chips" id="chips"></div>
+      <div class="tbl-wrap"><table id="tbl"></table></div>
+      <div class="row" style="margin-top:14px">
+        <button class="primary" id="btnImport">登録する</button>
+        <span class="muted" id="importMsg"></span>
+      </div>
+    </section>
+
+    <!-- 5. 結果 -->
+    <section class="card hidden" id="resultCard">
+      <h2><span class="num">5</span>取り込み結果</h2>
+      <div id="resultBody"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="danger" id="btnUndo">この取り込みで新規登録した分を取り消す</button>
+        <button id="btnAgain">続けて別のファイルを取り込む</button>
+      </div>
+    </section>
+  </div>
+</main>
+
+<dialog id="settingsDlg">
+  <h2 style="margin:0 0 6px;font-size:16px">Supabaseの接続設定</h2>
+  <p class="muted" style="margin:0">Supabaseの「Project Settings → API」にある値を入れてください。空欄のままだとデモモード（保存されない）で動きます。</p>
+  <label>Project URL</label>
+  <input type="text" id="cfgUrl" placeholder="https://xxxx.supabase.co">
+  <label>anon public key</label>
+  <input type="password" id="cfgKey">
+  <div class="row" style="margin-top:16px;justify-content:flex-end">
+    <button id="cfgClear">クリア</button>
+    <button id="cfgCancel">閉じる</button>
+    <button class="primary" id="cfgSave">保存</button>
+  </div>
+</dialog>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+let PDF_CMAP_URL = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/';
+let PDF_FONT_URL = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/standard_fonts/';
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nfkc = s => String(s ?? '').normalize('NFKC').replace(/\s+/g,' ').trim();
+const hdrNorm = s => String(s ?? '').normalize('NFKC').replace(/\s+/g,'');
+
+const WARDS = ['中村区','中川区','千種区','東区','北区','西区','中区','昭和区','瑞穂区','熱田区','港区','南区','守山区','緑区','名東区','天白区'];
+
+const FIELDS = [
+  {key:'name',        label:'名称', required:true, kw:['施設・サービス名','サービス名','事業所名','名称','施設名','医療機関名','病院名','事業者名','名前'], ng:['カナ','かな','フリガナ','ふりがな','コード','番号','法人']},
+  {key:'ward',        label:'区',               kw:[], exact:['区','区名','行政区']},
+  {key:'postal_code', label:'郵便番号',          kw:['郵便番号','〒']},
+  {key:'address',     label:'住所',             kw:['住所','所在地']},
+  {key:'phone',       label:'電話番号',          kw:['電話','tel']},
+  {key:'fax',         label:'FAX',              kw:['fax','ファックス','ファクス']},
+  {key:'rank',        label:'ランク（A/B/C）',    kw:['ランク']},
+  {key:'latitude',    label:'緯度',             kw:['緯度','latitude','lat']},
+  {key:'longitude',   label:'経度',             kw:['経度','longitude','lng','lon']},
+  {key:'note',        label:'メモ',             kw:['備考','メモ','特記']},
+];
+const KW_ALL = FIELDS.flatMap(f => [...f.kw, ...(f.exact||[])]);
+
+// ---------------- 状態 ----------------
+let sb = null, demo = true, session = null, staffRole = null;
+let fileName = '';
+let sheets = [];        // [{name, records:[{...}], headers:[]}]
+let headers = [];
+let mapping = {};
+let rows = [];          // プレビュー行
+let filter = 'all';
+let lastBatchId = null;
+
+// ---------------- 接続設定 ----------------
+// 接続先：config.js に書いてあればそれを使い（全員共通）、なければこのブラウザで入力した設定を使う
+function loadCfg(){
+  const norm = c => (c && c.url && c.key) ? { url: String(c.url).trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, ''), key: String(c.key).trim() } : null;
+  const shared = norm(window.EIGYO_CONFIG);
+  if (shared) return { ...shared, shared: true };
+  try { return norm(JSON.parse(localStorage.getItem('eigyo_sb_cfg') || 'null')); } catch { return null; }
+}
+function saveCfg(c){ try { c ? localStorage.setItem('eigyo_sb_cfg', JSON.stringify(c)) : localStorage.removeItem('eigyo_sb_cfg'); } catch {} }
+
+async function initConn(){
+  const cfg = loadCfg();
+  $('btnSettings').classList.toggle('hidden', !!cfg?.shared);
+  sb = null; demo = true; session = null;
+  if (cfg?.url && cfg?.key) {
+    try {
+      sb = supabase.createClient(cfg.url, cfg.key);
+      demo = false;
+      const { data } = await sb.auth.getSession();
+      session = data.session;
+    } catch (e) { sb = null; demo = true; }
+  }
+  await renderConn();
+}
+async function loadRole(){
+  staffRole = null;
+  if (demo || !session) return;
+  const { data } = await sb.rpc('current_staff_role');
+  staffRole = data || null;
+}
+async function renderConn(){
+  await loadRole();
+  const b = $('modeBanner');
+  if (demo) {
+    b.innerHTML = '<div class="banner demo">デモモードです。読み込み・重複チェック・プレビューまで試せますが、データは保存されません。右上の「接続設定」でSupabaseにつなぐと本番登録できます。</div>';
+  } else if (session && !staffRole) {
+    b.innerHTML = '<div class="banner err">このアカウントはスタッフとして登録されていないため、取り込みできません。管理者にスタッフ登録を依頼してください。</div>';
+  } else if (session && staffRole === 'viewer') {
+    b.innerHTML = '<div class="banner err">閲覧のみの権限のため、取り込みできません。</div>';
+  } else b.innerHTML = '';
+  const needLogin = !demo && !session;
+  $('loginCard').classList.toggle('hidden', !needLogin);
+  $('app').classList.toggle('hidden', needLogin);
+  $('btnLogout').classList.toggle('hidden', demo || !session);
+  $('who').textContent = session ? session.user.email : '';
+}
+$('btnSettings').onclick = () => { const c = loadCfg()||{}; $('cfgUrl').value = c.url||''; $('cfgKey').value = c.key||''; $('settingsDlg').showModal(); };
+$('cfgCancel').onclick = () => $('settingsDlg').close();
+$('cfgClear').onclick = async () => { saveCfg(null); $('settingsDlg').close(); await initConn(); };
+$('cfgSave').onclick = async () => {
+  // 「…/rest/v1/」付きで貼り付けても動くように末尾を取り除く
+  const url = $('cfgUrl').value.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, ''), key = $('cfgKey').value.trim();
+  saveCfg(url && key ? {url, key} : null);
+  $('settingsDlg').close(); await initConn();
+};
+$('btnLogin').onclick = async () => {
+  $('loginMsg').textContent = 'ログイン中…';
+  const { data, error } = await sb.auth.signInWithPassword({ email: $('loginEmail').value.trim(), password: $('loginPass').value });
+  if (error) { $('loginMsg').textContent = 'ログインできませんでした：' + error.message; return; }
+  session = data.session; $('loginMsg').textContent = ''; await renderConn();
+};
+$('btnLogout').onclick = async () => { await sb.auth.signOut(); session = null; await renderConn(); };
+
+// ---------------- ファイル読み込み ----------------
+const drop = $('drop');
+drop.onclick = () => $('file').click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); };
+$('file').onchange = e => { if (e.target.files[0]) handleFile(e.target.files[0]); e.target.value=''; };
+
+async function handleFile(file){
+  fileName = file.name;
+  $('fileInfo').textContent = '読み込み中…';
+  ['sheetCard','mapCard','previewCard','resultCard'].forEach(id => $(id).classList.add('hidden'));
+  try {
+    const ext = file.name.split('.').pop().toLowerCase();
+    let raw; // [{name, aoa}]
+    if (ext === 'pdf') raw = await readPdf(file);
+    else if (ext === 'csv') raw = await readCsv(file);
+    else raw = await readExcel(file);
+    sheets = raw.map(s => toRecords(s.name, s.aoa)).filter(s => s.records.length);
+    if (!sheets.length) { $('fileInfo').textContent = '取り込める行が見つかりませんでした。'; return; }
+    const total = sheets.reduce((n,s)=>n+s.records.length,0);
+    $('fileInfo').textContent = `${file.name}：${sheets.length}シート／${total}行を読み込みました` + (ext==='pdf' ? '（PDFは表の読み取りが不正確な場合があります。プレビューで確認してください）' : '');
+    renderSheets();
+  } catch (e) {
+    console.error(e);
+    $('fileInfo').textContent = '読み込みに失敗しました：' + e.message;
+  }
+}
+
+async function readExcel(file){
+  const wb = XLSX.read(await file.arrayBuffer(), {type:'array'});
+  return wb.SheetNames.map(n => ({ name:n, aoa: XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, defval:'', raw:false}) }));
+}
+async function readCsv(file){
+  const buf = await file.arrayBuffer();
+  let text;
+  try { text = new TextDecoder('utf-8', {fatal:true}).decode(buf); }
+  catch { text = new TextDecoder('shift_jis').decode(buf); }
+  const wb = XLSX.read(text.replace(/^\uFEFF/, ''), {type:'string'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  return [{ name: file.name.replace(/\.csv$/i,''), aoa: XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false}) }];
+}
+async function readPdf(file){
+  const pdf = await pdfjsLib.getDocument({
+    data: await file.arrayBuffer(),
+    cMapUrl: PDF_CMAP_URL, cMapPacked: true,          // 日本語フォントの読み取りに必要
+    standardFontDataUrl: PDF_FONT_URL,
+  }).promise;
+  const aoa = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    const lines = new Map();
+    for (const it of tc.items) {
+      if (!it.str.trim()) continue;
+      const y = Math.round(it.transform[5] / 3);
+      if (!lines.has(y)) lines.set(y, []);
+      lines.get(y).push({x: it.transform[4], w: it.width, s: it.str});
+    }
+    [...lines.keys()].sort((a,b)=>b-a).forEach(y => {
+      const items = lines.get(y).sort((a,b)=>a.x-b.x);
+      const cells = []; let cur = '', end = null;
+      for (const it of items) {
+        if (end !== null && it.x - end > 8) { cells.push(cur.trim()); cur = ''; }
+        cur += it.s; end = it.x + it.w;
+      }
+      cells.push(cur.trim());
+      aoa.push(cells);
+    });
+  }
+  return [{ name: file.name.replace(/\.pdf$/i,''), aoa }];
+}
+
+function detectHeader(aoa){
+  let best = -1, score = 0;
+  for (let i = 0; i < Math.min(15, aoa.length); i++) {
+    const sc = aoa[i].filter(c => { const t = hdrNorm(c).toLowerCase(); return t && KW_ALL.some(k => t === k.toLowerCase() || (t.length < 15 && t.includes(k.toLowerCase()))); }).length;
+    if (sc > score) { score = sc; best = i; }
+  }
+  if (best >= 0 && score >= 2) return best;
+  return Math.max(0, aoa.findIndex(r => r.filter(c => nfkc(c)).length >= 2));
+}
+function toRecords(name, aoa){
+  if (!aoa.length) return {name, records:[], headers:[]};
+  const h = detectHeader(aoa);
+  const hdr = (aoa[h]||[]).map((c,j) => hdrNorm(c) || `列${j+1}`);
+  const records = [];
+  for (let r = h + 1; r < aoa.length; r++) {
+    const row = aoa[r];
+    if (!row) continue;
+    const filled = row.filter(c => nfkc(c)).length;
+    if (filled < 2) continue;                                   // 「名古屋市」「（千種区）保健センター…」などの区切り行
+    if (row.filter((c,j) => hdrNorm(c) && hdrNorm(c) === hdr[j]).length >= 2) continue;  // ページごとに繰り返される見出し行
+    const o = { __sheet:name, __row:r+1 };
+    hdr.forEach((k,j) => { o[k] = row[j]; });
+    records.push(o);
+  }
+  return {name, records, headers:hdr};
+}
+
+// ---------------- シート選択 ----------------
+function renderSheets(){
+  $('sheetList').innerHTML = sheets.map((s,i) =>
+    `<label><input type="checkbox" data-i="${i}" checked> ${esc(s.name)}（${s.records.length}行）</label>`).join('');
+  $('sheetCard').classList.toggle('hidden', sheets.length < 2);
+  $('sheetList').onchange = () => { buildHeaders(); buildRows(); };
+  $('sheetAsWard').onchange = buildRows;
+  $('nagoyaOnly').onchange = buildRows;
+  $('kind').onchange = buildRows;
+  buildHeaders(true);
+  buildRows();
+}
+function selectedSheets(){
+  if (sheets.length < 2) return sheets;
+  return [...$('sheetList').querySelectorAll('input:checked')].map(i => sheets[+i.dataset.i]);
+}
+function buildHeaders(reguess){
+  const set = [];
+  selectedSheets().forEach(s => s.headers.forEach(h => { if (!set.includes(h)) set.push(h); }));
+  headers = set;
+  if (reguess || Object.values(mapping).some(h => h && !headers.includes(h))) guessMapping();
+  renderMapping();
+}
+function guessMapping(){
+  mapping = {}; const used = new Set();
+  const order = ['fax','phone','postal_code','latitude','longitude','name','address','ward','rank','note'];
+  for (const key of order) {
+    const f = FIELDS.find(x => x.key === key);
+    const hit = headers.find(h => {
+      if (used.has(h)) return false;
+      const t = h.toLowerCase();
+      if (f.exact && f.exact.includes(h)) return true;
+      if (key === 'phone' && /fax/i.test(h)) return false;
+      if (f.ng && f.ng.some(n => h.includes(n))) return false;
+      if ((key === 'latitude' || key === 'longitude') && !f.kw.slice(0,2).some(k => t.includes(k)) && !f.kw.includes(t)) return false;
+      return f.kw.some(k => t.includes(k.toLowerCase()));
+    });
+    if (hit) { mapping[key] = hit; used.add(hit); }
+  }
+}
+function renderMapping(){
+  $('mapGrid').innerHTML = FIELDS.map(f => `
+    <label><b>${esc(f.label)}${f.required ? ' <span class="req">必須</span>' : ''}</b>
+      <select data-k="${f.key}">
+        <option value="">（使わない）</option>
+        ${headers.map(h => `<option ${mapping[f.key]===h?'selected':''}>${esc(h)}</option>`).join('')}
+      </select>
+    </label>`).join('');
+  $('mapGrid').onchange = e => { mapping[e.target.dataset.k] = e.target.value; buildRows(); };
+  $('mapCard').classList.remove('hidden');
+}
+
+// ---------------- 正規化 ----------------
+function wardFrom(s){
+  const t = nfkc(s).replace(/\s/g,'');
+  if (!t) return '';
+  const after = t.includes('名古屋市') ? t.split('名古屋市')[1] : t;
+  return WARDS.find(w => after.startsWith(w)) || (t.includes('名古屋市') ? '' : WARDS.find(w => t === w || t === w.replace('区',''))) || '';
+}
+function cityFrom(s){
+  const t = nfkc(s).replace(/\s/g,'').replace(/^愛知県/,'');
+  const m = t.match(/^(.{1,5}?市)/) || t.match(/^(.{1,6}?郡.{1,5}?[町村])/) || t.match(/^(.{1,5}?[町村])/);  // 市を先に見る（蒲郡市を郡と取り違えないため）
+  return m ? m[1] : '';
+}
+const digits = s => nfkc(s).replace(/[^0-9]/g,'');
+const nameKey = s => nfkc(s).replace(/[\s・()（）]/g,'').toLowerCase();
+
+let existing = { byPhone:new Map(), byName:new Map(), loadedFor:null };
+async function loadExisting(){
+  if (demo || !session) { existing = { byPhone:new Map(), byName:new Map() }; return; }
+  const byPhone = new Map(), byName = new Map();
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await sb.from('organizations').select('id,name,city,ward,phone_normalized,kind').range(from, from + 999);
+    if (error) throw error;
+    data.forEach(o => {
+      // 種別ごとに照合する（病院と併設の居宅は電話番号が同じことがあるため）
+      if (o.phone_normalized && o.phone_normalized.length >= 9) byPhone.set(o.kind + '|' + o.phone_normalized, o);
+      byName.set(o.kind + '|' + nameKey(o.name) + '|' + (o.city||'') + '|' + (o.ward||''), o);
+    });
+    if (data.length < 1000) break;
+  }
+  existing = { byPhone, byName };
+}
+
+async function buildRows(){
+  const recs = selectedSheets().flatMap(s => s.records);
+  try { await loadExisting(); }
+  catch (e) { $('modeBanner').innerHTML = `<div class="banner err">既存データの取得に失敗しました：${esc(e.message)}</div>`; }
+  const useSheet = $('sheetAsWard').checked, nagoyaOnly = $('nagoyaOnly').checked, kind = $('kind').value;
+  const seenPhone = new Map(), seenName = new Map();
+  const v = (r,k) => mapping[k] ? nfkc(r[mapping[k]]) : '';
+
+  rows = recs.map((r, i) => {
+    let address = v(r,'address'), postal = v(r,'postal_code');
+    const m = address.match(/^〒?\s*(\d{3}-?\d{4})\s*/);
+    if (m) { if (!postal) postal = m[1]; address = address.slice(m[0].length); }
+    if (/^\d{7}$/.test(postal)) postal = postal.slice(0,3) + '-' + postal.slice(3);
+    const tel = k => v(r,k).replace(/\s/g,'');
+    const ward = wardFrom(v(r,'ward')) || wardFrom(address) || (useSheet ? wardFrom(r.__sheet) : '') || v(r,'ward');
+    const rankRaw = v(r,'rank').toUpperCase();
+    const lat = parseFloat(v(r,'latitude')), lng = parseFloat(v(r,'longitude'));
+    const city = cityFrom(address) || (ward && WARDS.includes(ward) ? '名古屋市' : '');
+    const org = {
+      name: v(r,'name'), city: city || null, ward: (city && city !== '名古屋市') ? null : (ward || null), postal_code: postal || null, address: address || null,
+      phone: tel('phone') || null, fax: tel('fax') || null,
+      rank: ['A','B','C'].includes(rankRaw) ? rankRaw : null,
+      latitude: isFinite(lat) ? lat : null, longitude: isFinite(lng) ? lng : null,
+      note: v(r,'note') || null,
+    };
+    if (!org.name && !org.address && !org.phone) return null;     // 中身のない行（2段目の見出しなど）
+    if ((mapping.address || mapping.phone) && !org.address && !org.phone) return null;  // 住所も電話もない行＝「〔〇〇保健所管内〕」などの区切り行
+    const ph = digits(org.phone), nk = nameKey(org.name) + '|' + (org.city||'') + '|' + (org.ward||'');
+    const outside = !!org.city && org.city !== '名古屋市';
+    let status = 'new', info = '', match = null;
+    if (!org.name) { status = 'err'; info = '名称が空です'; }
+    else if (outside && nagoyaOnly) { status = 'outside'; info = '名古屋市16区以外'; }
+    else {
+      match = (ph.length >= 9 && existing.byPhone.get(kind + '|' + ph)) || existing.byName.get(kind + '|' + nk) || null;
+      if (match) { status = 'dupdb'; info = `既存：${match.name}`; }
+      else {
+        const prev = (ph.length >= 9 && seenPhone.get(ph)) || seenName.get(nk);
+        if (prev) { status = 'dupfile'; info = `ファイル内で重複（${prev.src}）`; }
+      }
+      const src = `${r.__sheet} ${r.__row}行`;
+      if (ph.length >= 9 && !seenPhone.has(ph)) seenPhone.set(ph, {src});
+      if (!seenName.has(nk)) seenName.set(nk, {src});
+    }
+    const action = status === 'new' ? 'insert' : 'skip';
+    return { org, status, info, match, action, src:`${r.__sheet} ${r.__row}行` };
+  }).filter(Boolean);
+  rows.forEach((r, i) => r.i = i);
+  renderPreview();
+}
+
+// ---------------- プレビュー ----------------
+const ST = { new:['新規','b-new'], dupdb:['既存と重複','b-dupdb'], dupfile:['ファイル内重複','b-dupfile'], err:['エラー','b-err'], outside:['名古屋市外','b-err'] };
+
+const needsWard = r => r.status !== 'err' && r.status !== 'outside' && !r.org.ward && (!r.org.city || r.org.city === '名古屋市');
+function renderPreview(){
+  $('previewCard').classList.remove('hidden');
+  if (!mapping.name) {
+    $('summary').innerHTML = '<span class="req">「名称」の列を選んでください。</span>';
+    $('tbl').innerHTML = ''; $('chips').innerHTML = ''; $('btnImport').disabled = true; return;
+  }
+  const cnt = k => rows.filter(r => r.status === k).length;
+  const ins = rows.filter(r => r.action === 'insert').length, upd = rows.filter(r => r.action === 'update').length;
+  $('summary').innerHTML = `
+    <span>読み込み <b>${rows.length}</b> 行</span>
+    <span>新規登録 <b>${ins}</b></span>
+    <span>既存を更新 <b>${upd}</b></span>
+    <span>スキップ <b>${rows.length - ins - upd}</b></span>
+    <span class="muted">名古屋市内で区が空欄：${rows.filter(needsWard).length}件</span>`;
+  $('chips').innerHTML = [['all','すべて',rows.length],['new','新規',cnt('new')],['dupdb','既存と重複',cnt('dupdb')],['dupfile','ファイル内重複',cnt('dupfile')],['outside','名古屋市外',cnt('outside')],['err','エラー',cnt('err')],['noward','区が空欄',rows.filter(needsWard).length]]
+    .map(([k,l,n]) => `<button class="chip ${filter===k?'on':''}" data-f="${k}">${l} ${n}</button>`).join('');
+  const list = rows.filter(r => filter==='all' || (filter==='noward' ? needsWard(r) : r.status===filter));
+  $('tbl').innerHTML = `<thead><tr><th>状態</th><th>処理</th><th>名称</th><th>市町村・区</th><th>住所</th><th>電話</th><th>FAX</th><th>元の位置</th><th>確認事項</th></tr></thead><tbody>` +
+    list.map(r => `<tr>
+      <td><span class="badge ${ST[r.status][1]}">${ST[r.status][0]}</span></td>
+      <td>${r.status==='err' ? '<span class="muted">スキップ</span>' : `<select data-i="${r.i}">
+          <option value="insert" ${r.action==='insert'?'selected':''}>新規登録</option>
+          ${r.match ? `<option value="update" ${r.action==='update'?'selected':''}>既存を更新</option>` : ''}
+          <option value="skip" ${r.action==='skip'?'selected':''}>スキップ</option></select>`}</td>
+      <td class="wrap">${esc(r.org.name)}</td>
+      <td>${esc([r.org.city, r.org.ward].filter(Boolean).join(' '))}</td>
+      <td class="wrap">${esc(r.org.address||'')}</td>
+      <td>${esc(r.org.phone||'')}</td>
+      <td>${esc(r.org.fax||'')}</td>
+      <td class="muted">${esc(r.src)}</td>
+      <td class="wrap muted">${esc(r.info)}</td></tr>`).join('') + '</tbody>';
+  const canWrite = demo || staffRole === 'admin' || staffRole === 'sales';
+  $('btnImport').disabled = (ins + upd) === 0 || !canWrite;
+  $('btnImport').textContent = `登録する（新規${ins}件・更新${upd}件）`;
+}
+$('chips').onclick = e => { const f = e.target.dataset.f; if (f) { filter = f; renderPreview(); } };
+$('tbl').onchange = e => { const i = e.target.dataset.i; if (i !== undefined) { rows[+i].action = e.target.value; renderPreview(); } };
+$('btnApplyBulk').onclick = () => { const v = $('bulkDup').value; rows.forEach(r => { if (r.status==='dupdb') r.action = v; }); renderPreview(); };
+
+// ---------------- 登録 ----------------
+$('btnImport').onclick = async () => {
+  const ins = rows.filter(r => r.action === 'insert'), upd = rows.filter(r => r.action === 'update');
+  if (!confirm(`新規${ins.length}件・更新${upd.length}件を登録します。よろしいですか？`)) return;
+  const kind = $('kind').value;
+  $('btnImport').disabled = true;
+  const msg = t => $('importMsg').textContent = t;
+
+  if (demo) {
+    lastBatchId = null;
+    showResult({ inserted: ins.length, updated: upd.length, errors: [], demo:true });
+    return;
+  }
+  const errors = [];
+  try {
+    msg('取込履歴を作成中…');
+    const { data: me } = await sb.rpc('current_staff_id');
+    const { data: batch, error: be } = await sb.from('import_batches')
+      .insert({ file_name: fileName, source_kind: kind, row_count: ins.length + upd.length, imported_by: me || null })
+      .select('id').single();
+    if (be) throw be;
+    lastBatchId = batch.id;
+
+    let inserted = 0;
+    for (let k = 0; k < ins.length; k += 300) {
+      msg(`新規登録中… ${k}/${ins.length}`);
+      const chunk = ins.slice(k, k + 300).map(r => ({ ...r.org, kind, owner_staff_id: null, import_batch_id: batch.id }));
+      const { error } = await sb.from('organizations').insert(chunk);
+      if (error) errors.push(`新規 ${k+1}〜${k+chunk.length}件目：${error.message}`); else inserted += chunk.length;
+    }
+    let updated = 0;
+    for (const [n, r] of upd.entries()) {
+      msg(`更新中… ${n}/${upd.length}`);
+      const patch = Object.fromEntries(Object.entries(r.org).filter(([,val]) => val !== null && val !== ''));
+      const { error } = await sb.from('organizations').update(patch).eq('id', r.match.id);
+      if (error) errors.push(`更新「${r.org.name}」：${error.message}`); else updated++;
+    }
+    await sb.from('import_batches').update({ row_count: inserted + updated }).eq('id', batch.id);
+    showResult({ inserted, updated, errors });
+  } catch (e) {
+    errors.push(e.message);
+    showResult({ inserted:0, updated:0, errors });
+  } finally { msg(''); }
+};
+
+function showResult({inserted, updated, errors, demo:isDemo}){
+  $('resultCard').classList.remove('hidden');
+  $('resultBody').innerHTML =
+    (isDemo ? '<div class="banner demo">デモモードのため実際には保存していません。</div>' : '') +
+    `<div class="summary"><span>新規登録 <b>${inserted}</b> 件</span><span>更新 <b>${updated}</b> 件</span></div>` +
+    (errors.length ? `<div class="banner err">${errors.map(esc).join('<br>')}</div>` : (isDemo ? '' : '<div class="banner ok">取り込みが完了しました。</div>'));
+  $('btnUndo').classList.toggle('hidden', !lastBatchId || inserted === 0 || staffRole !== 'admin');
+  $('resultCard').scrollIntoView({behavior:'smooth'});
+}
+$('btnUndo').onclick = async () => {
+  if (!lastBatchId || !confirm('この取り込みで新規登録した営業先を削除します。（更新した既存データは元に戻りません）')) return;
+  const { data, error } = await sb.from('organizations').delete().eq('import_batch_id', lastBatchId).select('id');
+  if (error) { alert('取り消せませんでした：' + error.message); return; }
+  if (!data || data.length === 0) { alert('取り消せませんでした。削除は管理者権限が必要です。'); return; }
+  await sb.from('import_batches').delete().eq('id', lastBatchId);
+  lastBatchId = null;
+  $('resultBody').innerHTML = `<div class="banner ok">取り込みを取り消しました（${data.length}件を削除）。</div>`;
+  $('btnUndo').classList.add('hidden');
+};
+$('btnAgain').onclick = () => {
+  sheets = []; rows = []; mapping = {}; filter = 'all'; lastBatchId = null;
+  ['sheetCard','mapCard','previewCard','resultCard'].forEach(id => $(id).classList.add('hidden'));
+  $('fileInfo').textContent = ''; $('btnImport').disabled = false;
+  window.scrollTo({top:0, behavior:'smooth'});
+};
+
+initConn();
+</script>
+</body>
+</html>

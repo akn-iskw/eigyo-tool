@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>訪問報告</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<style>
+:root{
+  --bg:#f6f5f1; --card:#ffffff; --line:#e3e1da; --line2:#cfccc3;
+  --text:#24231f; --muted:#6d6b64; --accent:#2f6f5e; --accent-bg:#e4f1ec;
+  --warn:#8a5a0b; --warn-bg:#fbf0d9; --err:#9b2c2c; --err-bg:#fbe9e9;
+  --info:#1f5a8f; --info-bg:#e6f0fa; --radius:12px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#1b1b19; --card:#252522; --line:#3a3935; --line2:#4a4944;
+    --text:#ecebe6; --muted:#a3a19a; --accent:#7fd0b5; --accent-bg:#1f3a32;
+    --warn:#f2c46b; --warn-bg:#3d3018; --err:#f19a9a; --err-bg:#3f2222;
+    --info:#9cc6ef; --info-bg:#1d3045;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 "Hiragino Sans","Noto Sans JP","Yu Gothic UI",sans-serif;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:5}
+header h1{font-size:17px;margin:0;font-weight:600;white-space:nowrap}
+header .sp{flex:1}
+header a{color:var(--muted);font-size:13px}
+main{max-width:640px;margin:0 auto;padding:14px 12px}
+section.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+section.card h2{font-size:15px;margin:0 0 12px;display:flex;align-items:center;gap:8px}
+.num{display:inline-flex;flex:none;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--card);font-size:12px;align-items:center;justify-content:center}
+.opt{font-size:12px;color:var(--muted);font-weight:400}
+.muted{color:var(--muted);font-size:13px}
+button,select,input,textarea{font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line2);border-radius:10px;padding:10px 12px}
+textarea{width:100%;min-height:110px;resize:vertical}
+input[type=text],input[type=tel],input[type=email],input[type=password],input[type=date],input[type=search],select{width:100%;min-height:46px}
+input[type=checkbox],input[type=radio]{width:20px;height:20px;margin:0;accent-color:var(--accent);flex:none}
+button{cursor:pointer;min-height:44px}
+button.primary{background:var(--accent);color:var(--card);border-color:var(--accent);font-weight:600}
+button.ghost{background:transparent}
+button.small{min-height:34px;padding:4px 10px;font-size:13px}
+button:disabled{opacity:.45;cursor:not-allowed}
+label.f{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hidden{display:none!important}
+.banner{padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:12px}
+.banner.demo{background:var(--warn-bg);color:var(--warn)}
+.banner.ok{background:var(--accent-bg);color:var(--accent)}
+.banner.err{background:var(--err-bg);color:var(--err)}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.seg button{padding:8px 4px;font-size:15px}
+.seg button.on{background:var(--accent);border-color:var(--accent);color:var(--card);font-weight:600}
+.seg2{grid-template-columns:1fr 1fr}
+.results{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.res{text-align:left;display:block;width:100%;padding:10px 12px;border-radius:10px}
+.res b{display:block;font-weight:600;line-height:1.4}
+.res span{font-size:12px;color:var(--muted)}
+.badge{display:inline-block;padding:0 8px;border-radius:999px;font-size:12px;font-weight:600;background:var(--info-bg);color:var(--info);margin-right:6px;vertical-align:1px}
+.badge.hosp{background:var(--warn-bg);color:var(--warn)}
+.picked{border:1px solid var(--accent);background:var(--accent-bg);border-radius:10px;padding:12px}
+.picked a{white-space:nowrap}
+.picked h3{margin:2px 0 4px;font-size:17px;line-height:1.4}
+.stats{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:13px}
+.stats b{font-size:18px}
+.hist{margin-top:10px;border-top:1px dashed var(--line2);padding-top:8px}
+.hist div{font-size:13px;padding:4px 0;border-bottom:1px solid var(--line)}
+.hist div:last-child{border-bottom:0}
+.choice{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line2);border-radius:10px;margin-bottom:6px;cursor:pointer}
+.choice.on{border-color:var(--accent);background:var(--accent-bg)}
+.choice .t{flex:1;min-width:0}
+.choice .t b{font-weight:600}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.thumbs img{width:72px;height:46px;object-fit:cover;border-radius:6px;border:1px solid var(--line2);background:var(--line)}
+.prev{position:relative}
+.prev img{width:96px;height:62px}
+.prev button{position:absolute;top:-8px;right:-8px;min-height:0;width:24px;height:24px;padding:0;border-radius:50%;font-size:13px;line-height:1}
+.chk{display:flex;gap:10px;align-items:center;padding:8px 2px;font-size:15px}
+.subform{border:1px dashed var(--line2);border-radius:10px;padding:12px;margin-top:8px}
+.datebox{position:relative;display:flex;align-items:center;gap:10px;min-height:46px;border:1px solid var(--line2);border-radius:10px;padding:0 12px;background:var(--card)}
+.datebox:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-bg)}
+/* 実際の日付欄は透明にして枠全体に重ね、タップでカレンダーを開く */
+.datebox input{position:absolute;inset:0;width:100%;height:100%;min-height:0;opacity:0;border:0;padding:0;margin:0;cursor:pointer;z-index:1}
+/* クリアボタンは透明の日付欄より手前に出す */
+.datebox .dclear{position:relative;z-index:2;flex:none;min-height:0;padding:4px 12px;font-size:13px;border-radius:999px;color:var(--muted)}
+.datebox .dtext{flex:1;font-size:16px}
+.datebox .dtext .ph{color:var(--muted)}
+.datebox .dtext .sat{color:var(--info);font-weight:600}
+.datebox .dtext .sun{color:var(--err);font-weight:600}
+.datebox small{font-size:13px;color:var(--muted);margin-left:8px}
+.datebox .cal{flex:none;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:4px;background:var(--accent-bg);color:var(--accent);border-radius:999px;padding:4px 4px 4px 12px;font-size:15px;font-weight:600}
+.chip button{min-height:0;width:26px;height:26px;padding:0;border:0;border-radius:50%;background:transparent;color:inherit;font-size:16px;line-height:1}
+.quick button.on{background:var(--accent);border-color:var(--accent);color:var(--card);font-weight:600}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
+.quick button{padding:4px 2px;white-space:nowrap}
+.savebar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));z-index:6}
+.savebar .in{max-width:640px;margin:0 auto}
+.savebar button{width:100%;font-size:17px;min-height:52px}
+.savebar .msg{font-size:13px;margin-bottom:6px}
+.err{color:var(--err)}
+dialog{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);color:var(--text);width:min(460px,92vw);padding:20px}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+.done{text-align:center;padding:10px 0}
+.done .big{font-size:20px;font-weight:600;margin:6px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>訪問報告</h1>
+  <span class="sp"></span>
+  <a href="import.html">取り込み</a>
+  <span id="who" class="muted"></span>
+  <button id="btnLogout" class="small hidden">ログアウト</button>
+  <button id="btnSettings" class="small">接続設定</button>
+</header>
+
+<main>
+  <div id="modeBanner"></div>
+
+  <section class="card hidden" id="loginCard">
+    <h2>ログイン</h2>
+    <input type="email" id="loginEmail" placeholder="メールアドレス" autocomplete="username">
+    <div style="height:8px"></div>
+    <input type="password" id="loginPass" placeholder="パスワード" autocomplete="current-password">
+    <div style="height:10px"></div>
+    <button class="primary" id="btnLogin" style="width:100%">ログイン</button>
+    <p class="muted" id="loginMsg"></p>
+  </section>
+
+  <div id="app" class="hidden">
+    <!-- 1. 営業先 -->
+    <section class="card" id="secOrg">
+      <h2><span class="num">1</span>営業先</h2>
+      <div id="orgSearch">
+        <input type="search" id="orgQ" placeholder="名前・住所・電話番号で検索" autocomplete="off">
+        <div class="grid2" style="margin-top:8px">
+          <select id="orgKind">
+            <option value="">種別：すべて</option>
+            <option>居宅介護支援</option><option>病院</option><option>地域包括</option><option>紹介会社</option><option>その他</option>
+          </select>
+          <select id="orgArea"><option value="">地域：すべて</option></select>
+        </div>
+        <div class="results" id="orgResults"></div>
+        <button class="ghost small" id="btnNewOrg" style="margin-top:8px">＋ 一覧にない営業先を登録</button>
+        <div class="subform hidden" id="newOrgForm">
+          <label class="f">種別</label>
+          <select id="noKind"><option>居宅介護支援</option><option>病院</option><option>地域包括</option><option>紹介会社</option><option>その他</option></select>
+          <label class="f">名称 <span class="err">必須</span></label>
+          <input type="text" id="noName">
+          <label class="f">住所</label>
+          <input type="text" id="noAddr" placeholder="例：名古屋市中村区…">
+          <label class="f">電話番号</label>
+          <input type="tel" id="noPhone">
+          <p class="err" id="noErr"></p>
+          <div class="row"><button class="primary" id="noSave">登録して選ぶ</button><button class="ghost" id="noCancel">やめる</button></div>
+        </div>
+      </div>
+      <div id="orgPicked" class="hidden"></div>
+    </section>
+
+    <!-- 2. 種類・面会 -->
+    <section class="card" id="secType">
+      <h2><span class="num">2</span>接触の種類</h2>
+      <div class="seg" id="typeSeg">
+        <button data-v="訪問" class="on">訪問</button><button data-v="電話">電話</button><button data-v="FAX">FAX</button>
+        <button data-v="メール">メール</button><button data-v="資料送付">資料送付</button><button data-v="その他">その他</button>
+      </div>
+      <div id="metBox" style="margin-top:12px">
+        <div class="muted" style="margin-bottom:6px">担当者に会えましたか？ <span class="err">必須</span></div>
+        <div class="seg seg2" id="metSeg">
+          <button data-v="1">会えた</button><button data-v="0">不在・会えなかった</button>
+        </div>
+      </div>
+      <label class="f">日付</label>
+      <div class="datebox"><span class="dtext" id="actDateDow"></span><svg class="cal" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><input type="date" id="actDate" aria-label="日付"></div>
+    </section>
+
+    <!-- 3. 担当者・名刺 -->
+    <section class="card" id="secContact">
+      <h2><span class="num">3</span>会った担当者 <span class="opt">任意</span></h2>
+      <p class="muted" id="contactHint">先に営業先を選んでください。</p>
+      <div id="contactList"></div>
+      <div class="subform hidden" id="newContactForm">
+        <label class="f">氏名 <span class="err">必須</span></label>
+        <input type="text" id="ncName" placeholder="例：山田 花子">
+        <label class="f">ふりがな</label>
+        <input type="text" id="ncKana">
+        <label class="f">職種</label>
+        <input type="text" id="ncTitle" list="titleList" placeholder="例：ケアマネジャー">
+        <datalist id="titleList"><option>ケアマネジャー</option><option>主任ケアマネジャー</option><option>MSW（医療ソーシャルワーカー）</option><option>相談員</option><option>退院調整看護師</option><option>管理者</option><option>事務</option></datalist>
+        <label class="f">電話番号</label>
+        <input type="tel" id="ncPhone">
+      </div>
+      <div id="cardBox" class="hidden" style="margin-top:10px">
+        <button class="ghost" id="btnCard" style="width:100%">名刺を撮影・写真を追加</button>
+        <input type="file" id="cardInput" accept="image/*" capture="environment" multiple class="hidden">
+        <div class="thumbs" id="cardPrev"></div>
+      </div>
+    </section>
+
+    <!-- 4. 報告内容 -->
+    <section class="card" id="secBody">
+      <h2><span class="num">4</span>報告内容</h2>
+      <textarea id="summary" placeholder="話した内容、先方の様子、空室の案内状況など"></textarea>
+      <label class="f">次のアクション</label>
+      <input type="text" id="nextAction" placeholder="例：11月の空室情報を持参する">
+      <label class="f">次回予定日</label>
+      <div class="datebox"><span class="dtext" id="nextDateDow"></span><button type="button" class="dclear hidden" id="nextClear" aria-label="次回予定日をクリア">クリア</button><svg class="cal" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><input type="date" id="nextDate" aria-label="次回予定日"></div>
+      <div class="quick">
+        <button class="small" data-d="7">1週間後</button><button class="small" data-d="14">2週間後</button><button class="small" data-d="30">1か月後</button><button class="small" data-d="tbd" id="btnTbd">未定</button>
+      </div>
+      <label class="f">同行者</label>
+      <div id="staffBox"></div>
+      <div class="row" style="flex-wrap:nowrap;margin-top:4px">
+        <input type="text" id="compName" placeholder="同行者の名前を入力" list="compList" autocomplete="off">
+        <datalist id="compList"></datalist>
+        <button class="small" id="compAdd" style="flex:none;min-height:46px">追加</button>
+      </div>
+      <p class="err" id="compErr" style="margin:4px 0 0"></p>
+      <label class="f">渡した資料</label>
+      <div id="matBox"></div>
+      <div class="row" style="margin-top:4px">
+        <button class="ghost small" id="btnNewMat">＋ 資料を追加</button>
+      </div>
+      <div class="subform hidden" id="newMatForm">
+        <input type="text" id="nmName" placeholder="資料名（例：パンフレット+料金表）">
+        <label class="chk"><input type="checkbox" id="nmMonthly">毎月新しくなる資料（空室情報など）</label>
+        <input type="text" id="nmVer" placeholder="版（任意。例：2026年度版）">
+        <div class="row" style="margin-top:8px"><button class="primary small" id="nmSave">追加</button><button class="ghost small" id="nmCancel">やめる</button></div>
+      </div>
+    </section>
+
+    <section class="card hidden" id="doneCard"></section>
+  </div>
+</main>
+
+<div class="savebar hidden" id="saveBar">
+  <div class="in">
+    <div class="msg" id="saveMsg"></div>
+    <button class="primary" id="btnSave">報告を保存</button>
+  </div>
+</div>
+
+<dialog id="settingsDlg">
+  <h2 style="margin:0 0 6px;font-size:16px">Supabaseの接続設定</h2>
+  <p class="muted" style="margin:0">取り込み画面と同じ設定です。同じフォルダの取り込み画面で設定済みなら、入力は不要です。</p>
+  <label class="f">Project URL</label>
+  <input type="text" id="cfgUrl" placeholder="https://xxxx.supabase.co">
+  <label class="f">anon public key（sb_publishable_…）</label>
+  <input type="password" id="cfgKey">
+  <div class="row" style="margin-top:16px;justify-content:flex-end">
+    <button id="cfgClear">クリア</button>
+    <button id="cfgCancel">閉じる</button>
+    <button class="primary" id="cfgSave">保存</button>
+  </div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const nfkc = s => String(s ?? '').normalize('NFKC').replace(/\s+/g,' ').trim();
+// 検索用：全角半角・ひらがなカタカナ・空白・ハイフンの違いを無視する
+const searchKey = s => nfkc(s).toLowerCase().replace(/[ぁ-ゖ]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60)).replace(/[\s\-ー－]/g, '');
+const WARDS = ['中村区','中川区','千種区','東区','北区','西区','中区','昭和区','瑞穂区','熱田区','港区','南区','守山区','緑区','名東区','天白区'];
+const WARD_ORDER = ['千種区','東区','北区','西区','中村区','中区','昭和区','瑞穂区','熱田区','中川区','港区','南区','守山区','緑区','名東区','天白区'];
+function wardFrom(s){
+  const t = nfkc(s).replace(/\s/g,'');
+  if (!t) return '';
+  const after = t.includes('名古屋市') ? t.split('名古屋市')[1] : t;
+  return WARDS.find(w => after.startsWith(w)) || (t.includes('名古屋市') ? '' : WARDS.find(w => t === w || t === w.replace('区',''))) || '';
+}
+function cityFrom(s){
+  const t = nfkc(s).replace(/\s/g,'').replace(/^愛知県/,'');
+  const m = t.match(/^(.{1,5}?市)/) || t.match(/^(.{1,6}?郡.{1,5}?[町村])/) || t.match(/^(.{1,5}?[町村])/);
+  return m ? m[1] : '';
+}
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const todayStr = () => ymd(new Date());
+const addDays = (base, n) => { const d = new Date(base + 'T00:00:00'); d.setDate(d.getDate() + n); return ymd(d); };
+const WDAYS = '日月火水木金土';
+const fmtDate = s => { if (!s) return ''; const [y,m,d] = String(s).slice(0,10).split('-'); return `${y}/${+m}/${+d}（${WDAYS[new Date(+y, m - 1, +d).getDay()]}）`; };
+// 日付欄の横に「10月17日（土）」と、今日からの日数を表示する
+function showDow(id){
+  const v = $(id).value, el = $(id + 'Dow');
+  if (id === 'nextDate') { $('btnTbd').classList.toggle('on', !v && S.nextTbd); $('nextClear').classList.toggle('hidden', !v && !S.nextTbd); }
+  if (!v) { el.innerHTML = id === 'nextDate' && S.nextTbd ? '<b>未定</b>' : '<span class="ph">日付を選択</span>'; return; }
+  const [y, m, d] = v.split('-').map(Number);
+  const dt = new Date(y, m - 1, d), w = dt.getDay();
+  const diff = Math.round((dt - new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate())) / 86400000);
+  const rel = diff === 0 ? '今日' : diff === -1 ? '昨日' : diff === 1 ? '明日' : diff > 0 ? `${diff}日後` : `${-diff}日前`;
+  const cls = w === 0 ? 'sun' : w === 6 ? 'sat' : '';
+  el.innerHTML = `${y}/${m}/${d}（<span class="${cls}">${WDAYS[w]}</span>）<small>${rel}</small>`;
+}
+const areaOf = o => o.city === '名古屋市' ? (o.ward ? `名古屋市 ${o.ward}` : '名古屋市') : (o.city || '');
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+// ---------------- 状態 ----------------
+let sb = null, demo = true, session = null, staffRole = null, meId = null;
+let orgs = [], statsMap = new Map(), staffList = [], materials = [];
+let S = freshState();
+function freshState(keepOrg){
+  return {
+    org: keepOrg || null, type: '訪問', met: null, date: todayStr(),
+    contacts: [], cardMap: {}, contactSel: '',   // '' = 記録しない / id / '__new'
+    files: [], companions: new Set(), mats: new Set(), saving: false, nextTbd: false,
+  };
+}
+
+// ---------------- デモ用データ ----------------
+const DEMO = {
+  orgs: [
+    {id:'d1', kind:'居宅介護支援', name:'千種区介護保険事業所', city:'名古屋市', ward:'千種区', address:'愛知県名古屋市千種区西崎町2丁目4番地の1', phone:'052-763-7842'},
+    {id:'d2', kind:'居宅介護支援', name:'名古屋市千種・東ケアマネージメントセンター', city:'名古屋市', ward:'千種区', address:'愛知県名古屋市千種区桜が丘11番地', phone:'052-761-8321'},
+    {id:'d3', kind:'病院', name:'愛知県がんセンター', city:'名古屋市', ward:'千種区', address:'名古屋市千種区鹿子殿1-1', phone:'052-762-6111'},
+    {id:'d4', kind:'病院', name:'医療法人誠心会 大菅病院', city:'名古屋市', ward:'中村区', address:'名古屋市中村区', phone:'052-471-5600'},
+    {id:'d5', kind:'病院', name:'春日井市民病院', city:'春日井市', ward:null, address:'春日井市鷹来町1-1-1', phone:'0568-57-0057'},
+  ],
+  stats: { d1: {visit_count:3, meeting_count:2, last_visit_date: '2026-10-01'} },
+  contacts: { d1: [{id:'c1', name:'山田 花子', title:'ケアマネジャー', phone:''}] },
+  history: { d1: [{type:'訪問', met:true, activity_date:'2026-10-01', summary:'パンフレットを渡し、空室状況を説明。来月また伺う。', contact_id:'c1', reported_by:'s1'}] },
+  staff: [{id:'s1', name:'あかね'}, {id:'s2', name:'田中'}, {id:'s3', name:'鈴木'}],
+  materials: [{id:'m1', name:'パンフレット+料金表', version:null}, {id:'m2', name:'空室情報', version:null, monthly:true}],
+};
+
+// ---------------- 接続 ----------------
+// 接続先：config.js に書いてあればそれを使い（全員共通）、なければこのブラウザで入力した設定を使う
+function loadCfg(){
+  const norm = c => (c && c.url && c.key) ? { url: String(c.url).trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, ''), key: String(c.key).trim() } : null;
+  const shared = norm(window.EIGYO_CONFIG);
+  if (shared) return { ...shared, shared: true };
+  try { return norm(JSON.parse(localStorage.getItem('eigyo_sb_cfg') || 'null')); } catch { return null; }
+}
+function saveCfg(c){ try { c ? localStorage.setItem('eigyo_sb_cfg', JSON.stringify(c)) : localStorage.removeItem('eigyo_sb_cfg'); } catch {} }
+
+async function initConn(){
+  const cfg = loadCfg();
+  $('btnSettings').classList.toggle('hidden', !!cfg?.shared);
+  sb = null; demo = true; session = null;
+  if (cfg?.url && cfg?.key) {
+    try {
+      sb = supabase.createClient(cfg.url, cfg.key);
+      demo = false;
+      const { data } = await sb.auth.getSession();
+      session = data.session;
+    } catch (e) { sb = null; demo = true; }
+  }
+  await renderConn();
+}
+async function renderConn(){
+  staffRole = null; meId = null;
+  if (!demo && session) {
+    const r1 = await sb.rpc('current_staff_role'); staffRole = r1.data || null;
+    const r2 = await sb.rpc('current_staff_id');   meId = r2.data || null;
+  }
+  const b = $('modeBanner');
+  if (demo) b.innerHTML = '<div class="banner demo">デモモードです。画面の操作は試せますが、保存はされません。</div>';
+  else if (session && !staffRole) b.innerHTML = '<div class="banner err">このアカウントはスタッフとして登録されていないため、報告できません。管理者にスタッフ登録を依頼してください。</div>';
+  else if (session && staffRole === 'viewer') b.innerHTML = '<div class="banner err">閲覧のみの権限のため、報告は保存できません。</div>';
+  else b.innerHTML = '';
+  const needLogin = !demo && !session;
+  $('loginCard').classList.toggle('hidden', !needLogin);
+  const showApp = !needLogin && canWrite();   // 閲覧のみ・未登録の人には入力画面を出さない
+  $('app').classList.toggle('hidden', !showApp);
+  $('saveBar').classList.toggle('hidden', !showApp);
+  $('btnLogout').classList.toggle('hidden', demo || !session);
+  $('who').textContent = session ? (staffList.find(s => s.id === meId)?.name || '') : '';
+  if (showApp) await loadMaster();
+}
+$('btnSettings').onclick = () => { const c = loadCfg()||{}; $('cfgUrl').value = c.url||''; $('cfgKey').value = c.key||''; $('settingsDlg').showModal(); };
+$('cfgCancel').onclick = () => $('settingsDlg').close();
+$('cfgClear').onclick = async () => { saveCfg(null); $('settingsDlg').close(); await initConn(); };
+$('cfgSave').onclick = async () => {
+  const url = $('cfgUrl').value.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, ''), key = $('cfgKey').value.trim();
+  saveCfg(url && key ? {url, key} : null);
+  $('settingsDlg').close(); await initConn();
+};
+$('btnLogin').onclick = async () => {
+  $('loginMsg').textContent = 'ログイン中…';
+  const { data, error } = await sb.auth.signInWithPassword({ email: $('loginEmail').value.trim(), password: $('loginPass').value });
+  if (error) { $('loginMsg').textContent = 'ログインできませんでした：' + error.message; return; }
+  session = data.session; $('loginMsg').textContent = ''; await renderConn();
+};
+$('btnLogout').onclick = async () => { await sb.auth.signOut(); session = null; await renderConn(); };
+
+// ---------------- データ取得 ----------------
+async function fetchAll(table, cols, orderCol, filter = q => q){
+  const out = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await filter(sb.from(table).select(cols)).order(orderCol).range(from, from + 999);
+    if (error) throw error;
+    out.push(...data);
+    if (data.length < 1000) break;
+  }
+  return out;
+}
+async function loadMaster(){
+  try {
+    if (demo) {
+      orgs = DEMO.orgs.map(o => ({...o}));
+      statsMap = new Map(Object.entries(DEMO.stats));
+      staffList = DEMO.staff; materials = DEMO.materials.map(m => ({...m})); meId = 's1';
+    } else {
+      $('orgResults').innerHTML = '<p class="muted">営業先を読み込み中…</p>';
+      const [o, st, sf, mt] = await Promise.all([
+        fetchAll('organizations', 'id,kind,name,city,ward,address,phone', 'id', q => q.eq('is_active', true)),
+        fetchAll('organization_stats', 'organization_id,visit_count,meeting_count,last_visit_date', 'organization_id'),
+        fetchAll('staff', 'id,name', 'name', q => q.eq('is_active', true)),
+        loadMaterials(),
+      ]);
+      orgs = o; staffList = sf; materials = mt;
+      statsMap = new Map(st.map(s => [s.organization_id, s]));
+      $('who').textContent = staffList.find(s => s.id === meId)?.name || '';
+    }
+    orgs.forEach(o => o._key = searchKey(`${o.name} ${o.address||''} ${o.phone||''}`));
+    buildAreaOptions(); renderOrgResults(); renderStaff(); renderMats(); renderAll();
+  } catch (e) {
+    $('modeBanner').innerHTML = `<div class="banner err">データの読み込みに失敗しました：${esc(e.message)}</div>`;
+  }
+}
+// 資料：monthly 列（毎月新しくなる資料）を読む。まだ列を追加していない場合は「空室」を含む名前を毎月の資料とみなす
+let hasMonthlyCol = true;
+async function loadMaterials(){
+  try { return await fetchAll('materials', 'id,name,version,monthly', 'name', q => q.eq('is_active', true)); }
+  catch (e) {
+    if (!/monthly/.test(e.message || '')) throw e;
+    hasMonthlyCol = false;
+    const rows = await fetchAll('materials', 'id,name,version', 'name', q => q.eq('is_active', true));
+    return rows.map(m => ({ ...m, monthly: /空室/.test(m.name) }));
+  }
+}
+// 毎月の資料は、報告の日付の月を版として表示する
+const matLabel = m => m.monthly ? (S.date ? `${+S.date.slice(0,4)}年${+S.date.slice(5,7)}月版` : '今月版') : (m.version || '');
+const api = {
+  async stats(orgId){
+    if (demo) return DEMO.stats[orgId] || {visit_count:0, meeting_count:0, last_visit_date:null};
+    const { data } = await sb.from('organization_stats').select('organization_id,visit_count,meeting_count,last_visit_date').eq('organization_id', orgId);
+    return (data && data[0]) || {visit_count:0, meeting_count:0, last_visit_date:null};
+  },
+  async contacts(orgId){
+    if (demo) return (DEMO.contacts[orgId] || []).map(c => ({...c}));
+    const { data, error } = await sb.from('contacts').select('id,name,name_kana,title,phone').eq('organization_id', orgId).eq('is_active', true).order('name');
+    if (error) throw error; return data;
+  },
+  async cards(contactIds){
+    if (demo || !contactIds.length) return {};
+    const { data, error } = await sb.from('business_cards').select('id,contact_id,storage_path').in('contact_id', contactIds).order('uploaded_at');
+    if (error || !data.length) return {};
+    const { data: urls } = await sb.storage.from('business-cards').createSignedUrls(data.map(c => c.storage_path), 3600);
+    const byPath = new Map((urls || []).map(u => [u.path, u.signedUrl]));
+    const map = {};
+    data.forEach(c => { (map[c.contact_id] ||= []).push(byPath.get(c.storage_path)); });
+    return map;
+  },
+  async history(orgId){
+    if (demo) return DEMO.history[orgId] || [];
+    const { data } = await sb.from('activities').select('id,type,met,activity_date,summary,contact_id,reported_by').eq('organization_id', orgId).order('activity_date', {ascending:false}).limit(5);
+    return data || [];
+  },
+};
+
+// ---------------- 1. 営業先 ----------------
+function buildAreaOptions(){
+  const cnt = new Map();
+  orgs.forEach(o => { const a = areaOf(o); if (a) cnt.set(a, (cnt.get(a)||0) + 1); });
+  const nagoya = [...cnt.keys()].filter(a => a.startsWith('名古屋市')).sort((a,b) => WARD_ORDER.indexOf(a.split(' ')[1]) - WARD_ORDER.indexOf(b.split(' ')[1]));
+  const others = [...cnt.keys()].filter(a => !a.startsWith('名古屋市')).sort((a,b) => cnt.get(b) - cnt.get(a) || a.localeCompare(b, 'ja'));
+  const cur = $('orgArea').value;
+  $('orgArea').innerHTML = '<option value="">地域：すべて</option>' +
+    (nagoya.length ? `<optgroup label="名古屋市">${nagoya.map(a => `<option value="${esc(a)}">${esc(a.replace('名古屋市 ',''))}</option>`).join('')}</optgroup>` : '') +
+    (others.length ? `<optgroup label="名古屋市以外">${others.map(a => `<option>${esc(a)}</option>`).join('')}</optgroup>` : '');
+  $('orgArea').value = cur;
+}
+function renderOrgResults(){
+  const q = searchKey($('orgQ').value), kind = $('orgKind').value, area = $('orgArea').value;
+  const list = orgs.filter(o => (!kind || o.kind === kind) && (!area || areaOf(o) === area) && (!q || o._key.includes(q)));
+  if (!q && !kind && !area) {
+    // 何も指定していない時は、最近訪問した先を上に出す
+    const recent = list.filter(o => statsMap.get(o.id)?.last_visit_date).sort((a,b) => String(statsMap.get(b.id).last_visit_date).localeCompare(String(statsMap.get(a.id).last_visit_date))).slice(0, 8);
+    $('orgResults').innerHTML = (recent.length ? '<div class="muted">最近訪問した営業先</div>' + recent.map(orgBtn).join('') : '') +
+      `<p class="muted">${orgs.length}件の営業先から、名前・住所・電話番号で検索できます。</p>`;
+    return;
+  }
+  const shown = list.slice(0, 40);
+  $('orgResults').innerHTML = shown.map(orgBtn).join('') +
+    (list.length > shown.length ? `<p class="muted">ほか${list.length - shown.length}件。検索語を増やすか、地域で絞り込んでください。</p>` : '') +
+    (list.length === 0 ? '<p class="muted">見つかりませんでした。</p>' : '');
+}
+function orgBtn(o){
+  const s = statsMap.get(o.id);
+  const v = s && +s.visit_count ? `訪問${s.visit_count}回・最終 ${fmtDate(s.last_visit_date)}` : '訪問なし';
+  return `<button class="res" data-id="${esc(o.id)}"><b><span class="badge ${o.kind==='病院'?'hosp':''}">${esc(o.kind)}</span>${esc(o.name)}</b><span>${esc(areaOf(o))}　${esc(v)}</span></button>`;
+}
+['orgQ','orgKind','orgArea'].forEach(id => $(id).addEventListener('input', renderOrgResults));
+$('orgResults').onclick = e => { const b = e.target.closest('.res'); if (b) selectOrg(b.dataset.id); };
+
+async function selectOrg(id){
+  const o = orgs.find(x => x.id === id); if (!o) return;
+  S.org = o; S.contacts = []; S.cardMap = {}; S.contactSel = ''; S.files = [];
+  $('orgSearch').classList.add('hidden'); $('orgPicked').classList.remove('hidden');
+  $('orgPicked').innerHTML = pickedHtml(o, null, null);
+  renderContacts(true);
+  try {
+    const [st, hist, contacts] = await Promise.all([api.stats(id), api.history(id), api.contacts(id)]);
+    if (S.org !== o) return;
+    S.contacts = contacts;
+    $('orgPicked').innerHTML = pickedHtml(o, st, hist);
+    renderContacts();
+    S.cardMap = await api.cards(contacts.map(c => c.id));
+    if (S.org === o) renderContacts();
+  } catch (e) {
+    $('contactList').innerHTML = `<p class="err">担当者の読み込みに失敗しました：${esc(e.message)}</p>`;
+  }
+}
+function pickedHtml(o, st, hist){
+  const staffName = id => staffList.find(s => s.id === id)?.name || '';
+  const contactName = id => S.contacts.find(c => c.id === id)?.name || '';
+  const tel = o.phone ? `<a href="tel:${esc(String(o.phone).replace(/[^\d+]/g,''))}">${esc(o.phone)}</a>` : '';
+  return `<div class="picked">
+    <div class="row" style="justify-content:space-between"><span class="badge ${o.kind==='病院'?'hosp':''}">${esc(o.kind)}</span><button class="small" id="btnChangeOrg">変更</button></div>
+    <h3>${esc(o.name)}</h3>
+    <div class="muted">${esc(o.address || areaOf(o))}${tel ? '　' + tel : ''}</div>
+    ${st ? `<div class="stats"><span>訪問 <b>${+st.visit_count||0}</b> 回</span><span>面会 <b>${+st.meeting_count||0}</b> 回</span><span>最終訪問 <b>${st.last_visit_date ? fmtDate(st.last_visit_date) : '—'}</b></span></div>` : '<div class="muted" style="margin-top:8px">読み込み中…</div>'}
+    ${hist && hist.length ? `<div class="hist"><div class="muted" style="border:0">最近の記録</div>${hist.map(h =>
+      `<div><b>${fmtDate(h.activity_date)}</b>　${esc(h.type)}${h.type==='訪問' ? (h.met ? '（面会）' : '（不在）') : ''}${h.contact_id && contactName(h.contact_id) ? '・' + esc(contactName(h.contact_id)) : ''}${h.reported_by ? '　<span class="muted">' + esc(staffName(h.reported_by)) + '</span>' : ''}${h.summary ? '<br>' + esc(h.summary.length > 60 ? h.summary.slice(0,60) + '…' : h.summary) : ''}</div>`).join('')}</div>` : ''}
+  </div>`;
+}
+$('orgPicked').onclick = e => { if (e.target.id === 'btnChangeOrg') { S.org = null; S.contacts = []; S.contactSel = ''; S.files = []; renderAll(); $('orgQ').focus(); } };
+
+// 一覧にない営業先
+$('btnNewOrg').onclick = () => { $('newOrgForm').classList.remove('hidden'); $('btnNewOrg').classList.add('hidden'); $('noName').value = $('orgQ').value; $('noKind').value = $('orgKind').value || '居宅介護支援'; $('noErr').textContent = ''; };
+$('noCancel').onclick = () => { $('newOrgForm').classList.add('hidden'); $('btnNewOrg').classList.remove('hidden'); };
+$('noSave').onclick = async () => {
+  const name = nfkc($('noName').value), kind = $('noKind').value, address = nfkc($('noAddr').value) || null, phone = nfkc($('noPhone').value).replace(/\s/g,'') || null;
+  if (!name) { $('noErr').textContent = '名称を入力してください。'; return; }
+  const same = orgs.find(o => o.kind === kind && searchKey(o.name) === searchKey(name));
+  if (same && !confirm(`「${same.name}」がすでに登録されています。それでも新しく登録しますか？`)) return;
+  const city = address ? (cityFrom(address) || (wardFrom(address) ? '名古屋市' : '')) : '';
+  const ward = (!city || city === '名古屋市') && address ? wardFrom(address) : '';
+  const row = { kind, name, address, phone, city: city || null, ward: ward || null };
+  let created;
+  if (demo) created = { ...row, id: 'd' + Date.now() };
+  else {
+    if (!canWrite()) { $('noErr').textContent = 'この権限では登録できません。'; return; }
+    $('noSave').disabled = true;
+    const { data, error } = await sb.from('organizations').insert(row).select('id,kind,name,city,ward,address,phone').single();
+    $('noSave').disabled = false;
+    if (error) { $('noErr').textContent = '登録できませんでした：' + error.message; return; }
+    created = data;
+  }
+  created._key = searchKey(`${created.name} ${created.address||''} ${created.phone||''}`);
+  orgs.push(created); buildAreaOptions();
+  $('newOrgForm').classList.add('hidden'); $('btnNewOrg').classList.remove('hidden');
+  ['noName','noAddr','noPhone'].forEach(id => $(id).value = '');
+  selectOrg(created.id);
+};
+
+// ---------------- 2. 種類・面会 ----------------
+$('typeSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.type = b.dataset.v; if (S.type !== '訪問') S.met = null; renderAll(); };
+$('metSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.met = b.dataset.v === '1'; renderAll(); };
+$('actDate').addEventListener('input', e => { S.date = e.target.value; showDow('actDate'); renderMats(); });
+$('actDate').addEventListener('change', e => { S.date = e.target.value; showDow('actDate'); renderMats(); });
+$('nextDate').addEventListener('input', () => { if ($('nextDate').value) S.nextTbd = false; showDow('nextDate'); });
+$('nextDate').addEventListener('change', () => { if ($('nextDate').value) S.nextTbd = false; showDow('nextDate'); });
+// パソコンのブラウザでも、枠のどこを押してもカレンダーが開くようにする
+$('nextClear').onclick = e => { e.preventDefault(); e.stopPropagation(); S.nextTbd = false; $('nextDate').value = ''; showDow('nextDate'); };
+['actDate','nextDate'].forEach(id => $(id).addEventListener('click', e => { try { e.target.showPicker(); } catch {} }));
+
+// ---------------- 3. 担当者・名刺 ----------------
+function renderContacts(loading){
+  if (!S.org) { $('contactHint').classList.remove('hidden'); $('contactHint').textContent = '先に営業先を選んでください。'; $('contactList').innerHTML = ''; $('newContactForm').classList.add('hidden'); $('cardBox').classList.add('hidden'); return; }
+  $('contactHint').classList.toggle('hidden', !loading);
+  $('contactHint').textContent = '読み込み中…';
+  if (loading) { $('contactList').innerHTML = ''; return; }
+  const opt = (v, inner) => `<label class="choice ${S.contactSel === v ? 'on' : ''}"><input type="radio" name="ct" value="${esc(v)}" ${S.contactSel === v ? 'checked' : ''}><div class="t">${inner}</div></label>`;
+  $('contactList').innerHTML =
+    S.contacts.map(c => opt(c.id, `<b>${esc(c.name)}</b>${c.title ? `　<span class="muted">${esc(c.title)}</span>` : ''}` +
+      ((S.cardMap[c.id] || []).length ? `<div class="thumbs">${S.cardMap[c.id].filter(Boolean).map(u => `<img src="${esc(u)}" alt="名刺">`).join('')}</div>` : ''))).join('') +
+    opt('__new', '<b>＋ 新しい担当者を登録</b>') +
+    opt('', `<span class="muted">担当者を記録しない${S.type === '訪問' && S.met === false ? '（不在）' : ''}</span>`);
+  $('newContactForm').classList.toggle('hidden', S.contactSel !== '__new');
+  $('cardBox').classList.toggle('hidden', !S.contactSel);
+  renderCardPrev();
+}
+$('contactList').onchange = e => { if (e.target.name === 'ct') { S.contactSel = e.target.value; renderContacts(); if (S.contactSel === '__new') $('ncName').focus(); } };
+$('btnCard').onclick = () => $('cardInput').click();
+$('cardInput').onchange = e => { S.files.push(...[...e.target.files]); e.target.value = ''; renderCardPrev(); };
+function renderCardPrev(){
+  $('cardPrev').innerHTML = S.files.map((f, i) => `<div class="prev"><img src="${URL.createObjectURL(f)}" alt=""><button data-i="${i}" aria-label="削除">×</button></div>`).join('');
+  $('btnCard').textContent = S.files.length ? `名刺の写真を追加（${S.files.length}枚選択中）` : '名刺を撮影・写真を追加';
+}
+$('cardPrev').onclick = e => { const b = e.target.closest('button'); if (b) { S.files.splice(+b.dataset.i, 1); renderCardPrev(); } };
+
+// 写真を縮小（長辺1600px・JPEG）して容量を抑える
+async function shrink(file){
+  try {
+    const url = URL.createObjectURL(file);
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85));
+    return blob || file;
+  } catch { return file; }
+}
+
+// ---------------- 4. 報告内容 ----------------
+document.querySelector('.quick').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const d = b.dataset.d;
+  S.nextTbd = d === 'tbd';                 // 「未定」は日付なしで保存する（フォロー漏れはランク別の間隔で判定）
+  $('nextDate').value = d && d !== 'tbd' ? addDays(S.date || todayStr(), +d) : '';
+  showDow('nextDate');
+};
+function renderStaff(){
+  // 追加した同行者だけを名前の札で表示（×で外す）。以前入れた名前は入力欄の候補に出す
+  const picked = [...S.companions].map(id => staffList.find(s => s.id === id)).filter(Boolean);   // 追加した順
+  $('staffBox').innerHTML = picked.length ? `<div class="chips">${picked.map(s => `<span class="chip">${esc(s.name)}<button data-id="${esc(s.id)}" aria-label="${esc(s.name)}を外す">×</button></span>`).join('')}</div>` : '';
+  $('staffBox').style.marginBottom = picked.length ? '8px' : '0';
+  $('compList').innerHTML = staffList.filter(s => s.id !== meId && !S.companions.has(s.id)).map(s => `<option value="${esc(s.name)}">`).join('');
+}
+$('staffBox').onclick = e => { const b = e.target.closest('button[data-id]'); if (b) { S.companions.delete(b.dataset.id); renderStaff(); } };
+// 同行者をその場で追加（ログインしない人として staff に登録し、次回から選べるようにする）
+async function addCompanion(){
+  // 「鈴木さん」「鈴木様」などの敬称は外して、同じ人として扱う
+  const name = nfkc($('compName').value).replace(/\s*(さん|さま|様|氏|くん|ちゃん)$/, '');
+  $('compErr').textContent = '';
+  if (!name) { $('compName').focus(); return; }
+  const key = searchKey(name);
+  if (meId && searchKey(staffList.find(s => s.id === meId)?.name || '') === key) { $('compErr').textContent = '自分は自動で記録されるので、追加しなくて大丈夫です。'; return; }
+  let s = staffList.find(x => searchKey(x.name) === key);
+  if (!s) {
+    if (demo) s = { id: 's' + Date.now(), name };
+    else {
+      $('compAdd').disabled = true;
+      const { data, error } = await sb.from('staff').insert({ name, role: 'sales', auth_user_id: null }).select('id,name').single();
+      $('compAdd').disabled = false;
+      if (error) { $('compErr').textContent = '追加できませんでした：' + error.message; return; }
+      s = data;
+    }
+    staffList.push(s);
+    staffList.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+  }
+  S.companions.add(s.id);
+  $('compName').value = '';
+  renderStaff();
+}
+$('compAdd').onclick = addCompanion;
+$('compName').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); addCompanion(); } });
+function renderMats(){
+  $('matBox').innerHTML = materials.length ? materials.map(m => `<label class="chk"><input type="checkbox" value="${esc(m.id)}" ${S.mats.has(m.id) ? 'checked' : ''}>${esc(m.name)}${matLabel(m) ? `<span class="muted">（${esc(matLabel(m))}）</span>` : ''}</label>`).join('') : '<p class="muted">資料が登録されていません。「＋ 資料を追加」から登録できます。</p>';
+}
+$('matBox').onchange = e => { if (e.target.type === 'checkbox') e.target.checked ? S.mats.add(e.target.value) : S.mats.delete(e.target.value); };
+$('btnNewMat').onclick = () => { $('newMatForm').classList.remove('hidden'); $('nmName').focus(); };
+$('nmCancel').onclick = () => $('newMatForm').classList.add('hidden');
+$('nmMonthly').onchange = e => $('nmVer').classList.toggle('hidden', e.target.checked);
+$('nmSave').onclick = async () => {
+  const name = nfkc($('nmName').value), monthly = $('nmMonthly').checked;
+  const version = monthly ? null : (nfkc($('nmVer').value) || null);
+  if (!name) { $('nmName').focus(); return; }
+  const same = materials.find(x => searchKey(x.name) === searchKey(name) && (x.version || '') === (version || ''));
+  if (same) { S.mats.add(same.id); $('newMatForm').classList.add('hidden'); renderMats(); return; }
+  let m;
+  if (demo) m = { id: 'm' + Date.now(), name, version, monthly };
+  else {
+    if (!canWrite()) return;
+    const row = hasMonthlyCol ? { name, version, monthly } : { name, version };
+    const { data, error } = await sb.from('materials').insert(row).select(hasMonthlyCol ? 'id,name,version,monthly' : 'id,name,version').single();
+    if (error) { alert('資料を追加できませんでした：' + error.message); return; }
+    m = hasMonthlyCol ? data : { ...data, monthly: /空室/.test(data.name) };
+  }
+  materials.push(m); S.mats.add(m.id);
+  $('nmName').value = ''; $('nmVer').value = ''; $('nmMonthly').checked = false; $('nmVer').classList.remove('hidden'); $('newMatForm').classList.add('hidden');
+  renderMats();
+};
+
+// ---------------- 全体の描画 ----------------
+function renderAll(){
+  const picked = !!S.org;
+  $('orgSearch').classList.toggle('hidden', picked);
+  $('orgPicked').classList.toggle('hidden', !picked);
+  if (!picked) renderOrgResults();
+  [...$('typeSeg').children].forEach(b => b.classList.toggle('on', b.dataset.v === S.type));
+  $('metBox').classList.toggle('hidden', S.type !== '訪問');
+  [...$('metSeg').children].forEach(b => b.classList.toggle('on', S.met !== null && (b.dataset.v === '1') === S.met));
+  $('actDate').value = S.date; showDow('actDate'); showDow('nextDate');
+  renderContacts();
+  $('saveMsg').textContent = '';
+  $('btnSave').disabled = !canWrite() || S.saving;
+}
+const canWrite = () => demo || staffRole === 'admin' || staffRole === 'sales';
+
+// ---------------- 保存 ----------------
+function validate(){
+  if (!S.org) return ['営業先を選んでください。', 'secOrg'];
+  if (S.type === '訪問' && S.met === null) return ['担当者に会えたかどうかを選んでください。', 'secType'];
+  if (!S.date) return ['日付を入力してください。', 'secType'];
+  if (S.contactSel === '__new' && !nfkc($('ncName').value)) return ['新しい担当者の氏名を入力してください。', 'secContact'];
+  const nd = $('nextDate').value;
+  if (nd && nd < S.date) return ['次回予定日が、報告の日付より前になっています。', 'secBody'];
+  return null;
+}
+$('btnSave').onclick = async () => {
+  if (S.saving) return;
+  const v = validate();
+  if (v) { $('saveMsg').innerHTML = `<span class="err">${esc(v[0])}</span>`; $(v[1]).scrollIntoView({behavior:'smooth', block:'start'}); return; }
+  S.saving = true; $('btnSave').disabled = true;
+  const msg = t => $('saveMsg').textContent = t;
+  const warnings = [];
+  try {
+    if (demo) { await wait(400); return showDone({ visit_count: '—', meeting_count: '—' }, warnings, true); }
+
+    // 新しい担当者
+    if (S.contactSel === '__new') {
+      msg('担当者を登録中…');
+      const row = { organization_id: S.org.id, name: nfkc($('ncName').value), name_kana: nfkc($('ncKana').value) || null, title: nfkc($('ncTitle').value) || null, phone: nfkc($('ncPhone').value).replace(/\s/g,'') || null };
+      const { data, error } = await sb.from('contacts').insert(row).select('id,name,name_kana,title,phone').single();
+      if (error) throw new Error('担当者を登録できませんでした：' + error.message);
+      await sb.from('contact_affiliations').insert({ contact_id: data.id, organization_id: S.org.id, start_date: S.date });
+      // 途中で失敗して保存し直しても、担当者が二重に登録されないようにする
+      S.contacts.push(data); S.contactSel = data.id;
+      ['ncName','ncKana','ncTitle','ncPhone'].forEach(id => $(id).value = '');
+    }
+    const contactId = S.contactSel || null;
+
+    // 名刺
+    if (contactId && S.files.length) {
+      const files = [...S.files];
+      for (let i = 0; i < files.length; i++) {
+        msg(`名刺をアップロード中… ${i + 1}/${files.length}`);
+        const blob = await shrink(files[i]);
+        const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+        const path = `${contactId}/${Date.now()}-${i}.${ext}`;
+        const up = await sb.storage.from('business-cards').upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: false });
+        if (up.error) { warnings.push(`名刺${i + 1}枚目をアップロードできませんでした：${up.error.message}`); continue; }
+        const { error } = await sb.from('business_cards').insert({ contact_id: contactId, storage_path: path, uploaded_by: meId });
+        if (error) warnings.push(`名刺${i + 1}枚目を記録できませんでした：${error.message}`);
+        S.files.splice(S.files.indexOf(files[i]), 1);
+      }
+    }
+
+    // 接触記録
+    msg('報告を保存中…');
+    const act = {
+      organization_id: S.org.id, contact_id: contactId, type: S.type,
+      met: S.type === '訪問' ? S.met : null, activity_date: S.date,
+      summary: $('summary').value.trim() || null, next_action: $('nextAction').value.trim() || null,
+      next_date: $('nextDate').value || null, reported_by: meId,
+    };
+    const { data: a, error: ae } = await sb.from('activities').insert(act).select('id').single();
+    if (ae) throw new Error('報告を保存できませんでした：' + ae.message);
+
+    const staffIds = [...new Set([meId, ...S.companions])].filter(Boolean);
+    if (staffIds.length) {
+      const { error } = await sb.from('activity_staff').insert(staffIds.map(id => ({ activity_id: a.id, staff_id: id })));
+      if (error) warnings.push('同行者を記録できませんでした：' + error.message);
+    }
+    if (S.mats.size) {
+      const { error } = await sb.from('activity_materials').insert([...S.mats].map(id => ({ activity_id: a.id, material_id: id })));
+      if (error) warnings.push('渡した資料を記録できませんでした：' + error.message);
+    }
+    const st = await api.stats(S.org.id);
+    statsMap.set(S.org.id, st);
+    showDone(st, warnings, false);
+  } catch (e) {
+    $('saveMsg').innerHTML = `<span class="err">${esc(e.message)}</span>`;
+    S.saving = false; $('btnSave').disabled = false;
+    renderContacts();
+  }
+};
+
+function showDone(st, warnings, isDemo){
+  ['secOrg','secType','secContact','secBody'].forEach(id => $(id).classList.add('hidden'));
+  $('saveBar').classList.add('hidden');
+  const d = $('doneCard'); d.classList.remove('hidden');
+  d.innerHTML = `<div class="done">
+      <div class="big">報告を保存しました</div>
+      ${isDemo ? '<div class="banner demo">デモモードのため、実際には保存していません。</div>' : ''}
+      <div>${esc(S.org.name)}</div>
+      <div class="stats" style="justify-content:center"><span>訪問 <b>${esc(st.visit_count)}</b> 回</span><span>面会 <b>${esc(st.meeting_count)}</b> 回</span></div>
+      ${warnings.length ? `<div class="banner err" style="text-align:left;margin-top:12px">${warnings.map(esc).join('<br>')}</div>` : ''}
+    </div>
+    <button class="primary" id="btnAgainSame" style="width:100%;margin-top:8px">同じ営業先で続けて報告</button>
+    <button id="btnAgainNew" style="width:100%;margin-top:8px">別の営業先を報告</button>`;
+  window.scrollTo({ top: 0 });
+}
+$('doneCard').onclick = e => {
+  if (e.target.id !== 'btnAgainSame' && e.target.id !== 'btnAgainNew') return;
+  const same = e.target.id === 'btnAgainSame' ? S.org : null;
+  S = freshState();
+  ['summary','nextAction','nextDate','orgQ'].forEach(id => $(id).value = '');
+  ['secOrg','secType','secContact','secBody'].forEach(id => $(id).classList.remove('hidden'));
+  $('doneCard').classList.add('hidden'); $('saveBar').classList.remove('hidden');
+  renderStaff(); renderMats(); renderAll();
+  if (same) selectOrg(same.id);
+  window.scrollTo({ top: 0 });
+};
+
+initConn();
+</script>
+</body>
+</html>
